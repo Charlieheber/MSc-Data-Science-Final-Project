@@ -240,15 +240,105 @@ get_daylight_hours <- function(LAT, JDATE){
   return(DAYLIGHT_hours)
 }
 
-get_MC_100hrs <- function(DAYLIGHT_hours, EMC_min, EMC_max, PPT_24hours, YMC100){
+# where YMC_100hrs is MC from previous day
+get_MC_100hrs <- function(DAYLIGHT_hours, EMC_min, EMC_max, PPT_24hours, YMC_100hrs, initialize_YMC_100hrs=FALSE, CLIMAT=NULL){
+  
+  if(initialize_YMC_100hrs) YMC_100hrs = 5.0 + (5.0 * CLIMAT)
   
   EMC_bar = (DAYLIGHT_hours * EMC_min + (24.0 - DAYLIGHT_hours) * EMC_max) / 24.0 
   
   BNDRYH = ((24.0 - PPT_24hours) * EMC_bar + PPT_24hours * (0.5 * PPT_24hours + 41.0)) / 24.0
   
-  MC_100hrs = YMC100 + (BNDRYH - YMC100) * (1.0 - 0.87 * exp(-0.24)) 
+  MC_100hrs = YMC_100hrs + (BNDRYH - YMC_100hrs) * (1.0 - 0.87 * exp(-0.24)) 
   
   return(MC_100hrs)
   
 }
+
+# FUELS: 1000 HOUR TIMELAG #########
+####################################
+
+# Weighted 24 Hour Average Boundary Condition:
+#   BNDRYT = ((24.0 - PPTDUR) * EMCBAR +
+#               PPTDUR * (2.7 * PPTDUR + 76.0)) / 24.0
+# Seven Day Running Average Boundary Condition:
+#   BDYBAR = (BNDRYT(1) + ...............+ BNDRYT(7)) / 7.0
+# in which ( ) denotes a day in the 7-day series. It is necessary,
+# therefore, to maintain a 1 x 7 array of BNDRYT values. 
+
+# where:
+#   PPTDUR is Duration of precipitation
+#   EMCBAR is Average EMC, weighted by hours of day and night
+
+EMC_bar = (DAYLIGHT_hours * EMC_min + (24.0 - DAYLIGHT_hours) * EMC_max) / 24.0 
+
+get_BNDRY_T <- function(DAYLIGHT_hours, EMC_min, EMC_max, PPT_duration){
+  
+  EMC_bar <- (DAYLIGHT_hours * EMC_min + (24.0 - DAYLIGHT_hours) * EMC_max) / 24.0 
+  
+  BNDRY_T <- ((24.0 - PPT_duration) * EMC_bar + PPT_duration * (2.7 * PPT_duration + 76.0)) / 24.0
+  
+  return(BNDRY_T)
+}
+
+# BNNDRY_week an array of BNDRY_T for each day in a week
+get_BNDRY_bar <- function(BNNDRY_week){
+  mean(BNNDRY_week)
+}
+
+# PM_1000hrs is moisture content from previous week (7 days ago)
+get_MC_1000hrs <- function(BNDRY_week, PM_1000hrs, initialize_MC_1000hrs=FALSE, CLIMAT=NULL){
+  
+  if(initialize_MC_1000hrs){
+    MC_1000hrs_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
+    BNNDRY_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
+  } 
+  
+  BNDRY_bar <- mean(BNNDRY_week)
+  
+  MC_1000hrs <- MC_1000hrs_week[1] + (BNDRY_bar - MC_1000hrs_week[1])*(1-0.82*exp(-0.168))
+  message(paste("moisture content (1000hrs):", round(MC_1000hrs,3)))
+  
+  MC_1000hrs_week_new <- MC_1000hrs_week[2:7]
+  MC_1000hrs_week_new[7] <- MC_1000hrs
+  
+  return(MC_1000hrs_week_new)
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
