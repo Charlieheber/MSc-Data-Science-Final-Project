@@ -306,24 +306,48 @@ get_BNDRY_T <- function(DAYLIGHT_hours, EMC_min, EMC_max, PPT_duration){
   return(BNDRY_T)
 }
 
+# Precipitation--In pre-1972 fire-weather reports, precipitation duration (PPTDUR) was not reported, but precipitation amount (PPTAMT) was. So by assuming a rainfall
+# rate (WETRAT), a pseudo-duration can be calculated as
+# follows:
+#   PPTDUR = IRND((PPTAMT / WETRAT) + 0.49)
+# in which
+# IRND indicates that the quantity in parentheses is a
+# rounded integer.
+# PPTDUR cannot be greater than 8 hours.
+# WETRAT is a function of climate class as follows: 
+
+# PPT_24hours is precipitation in inches over a day
+# WETRAT is the rate of rainfall in inches per hour
+# listed as 0.25 in areas of climate class 1 or 2
+get_PPT_duration <- function(PPT_24hours, WETRAT){
+  
+  PPT_duration = ceiling((PPT_24hours / WETRAT))
+  
+  if(PPT_duration > 8) PPT_duration = 8 
+  
+  return(PPT_duration)
+}
+
+
 # BNNDRY_week an array of BNDRY_T for each day in a week
-# PM_1000hrs is moisture content from previous week (7 days ago)
-get_MC_1000hr <- function(BNDRY_week, PM_1000hrs, initialize_MC_1000hrs=FALSE, CLIMAT=NULL){
+# MC_1000_hr_week is an array of 1000hr moisture content from the last 7 days  
+get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALSE, CLIMAT=NULL, verbose=FALSE){
   
   if(initialize_MC_1000hrs){
-    MC_1000hrs_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
-    BNNDRY_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
+    MC_1000hr_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
+    BNDRY_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
   } 
   
-  BNDRY_bar <- mean(BNNDRY_week)
+  BNDRY_bar <- mean(BNDRY_week)
   
-  MC_1000hrs <- MC_1000hrs_week[1] + (BNDRY_bar - MC_1000hrs_week[1])*(1-0.82*exp(-0.168))
-  message(paste("moisture content (1000hrs):", round(MC_1000hrs,3)))
+  MC_1000hr <- MC_1000hr_week[1] + (BNDRY_bar - MC_1000hr_week[1])*(1-0.82*exp(-0.168))
   
-  MC_1000hrs_week_new <- MC_1000hrs_week[2:7]
-  MC_1000hrs_week_new[7] <- MC_1000hrs
+  if(verbose) message(paste("moisture content (1000hrs):", round(MC_1000hr,3)))
   
-  return(MC_1000hrs_week_new)
+  MC_1000hr_week_new <- MC_1000hr_week[2:7]
+  MC_1000hr_week_new[7] <- MC_1000hr
+  
+  return(list("MC_1000hr_week" = MC_1000hr_week_new, "MC_1000hr" = MC_1000hr))
   
 }
 

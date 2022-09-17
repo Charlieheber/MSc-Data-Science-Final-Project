@@ -43,6 +43,8 @@ mm_to_inches <- 0.0393701
 measured_vars <- c("total_solar_radiation", "ave_air_temp", "max_air_temp", "min_air_temp",         
                    "ave_relative_humidity", "max_relative_humidity", "min_relative_humidity", "total_precipitation")
 
+month_df <- data.frame("month" = month.name, "month_no" = 1:12)
+
 # useful to add a month/day of month column 
 mnth_day_yr <- str_split(this_station_data$date, "/", simplify = TRUE)
 
@@ -54,29 +56,51 @@ this_station_data$day_of_month <- mnth_day_yr[,2]
 
 this_station_data_by_month <- split(this_station_data, this_station_data$month)
 
-station_data_month_ave_lst <-  lapply(this_station_data_by_month, 
+this_station_data_month_ave_lst <-  lapply(this_station_data_by_month, 
                                       function(x) data.frame("value" = colMeans(x[, ..measured_vars], na.rm=TRUE)))
 
-for(i in 1:length(station_data_month_ave_lst)) { 
-  station_data_month_ave_lst[[i]]$month <- month.name[i]
-  station_data_month_ave_lst[[i]]$var <- row.names(station_data_month_ave_lst[[i]])
+for(i in 1:length(this_station_data_month_ave_lst)) { 
+  this_station_data_month_ave_lst[[i]]$month <- month_df$month[i]
+  this_station_data_month_ave_lst[[i]]$var <- row.names(this_station_data_month_ave_lst[[i]])
 }
 
-station_data_month_ave_df <- rbindlist(station_data_month_ave_lst)
+this_station_data_month_ave_df <- rbindlist(this_station_data_month_ave_lst)
 
-ggplot(station_data_month_ave_df[station_data_month_ave_df$var %in% c("ave_air_temp", "ave_relative_humidity", "total_precipitation", "total_solar_radiation"),], 
+ggplot(this_station_data_month_ave_df[this_station_data_month_ave_df$var %in% c("ave_air_temp", "ave_relative_humidity", "total_precipitation", "total_solar_radiation"),], 
        aes(x=factor(month, level=month.name), y=value, group=var)) +
   geom_line(aes(color=var))+
   geom_point(aes(color=var))
-
+# makes sense!
 
 # deal with missing values ########
 ###################################
 
+# replace missing values with the average value for that month across all years
 
-names(this_station_data)
+replace_missing_val_w_mnth_ave <- function(station_data_by_month, station_data_month_ave_df, month_df){
+  # station_data_by_month <- this_station_data_by_month[[1]]
+  # station_data_month_ave_df <- this_station_data_month_ave_df
+  
+  this_month <- month_df[which(month_df$month_no == as.numeric(unique(station_data_by_month$month))),]
+  station_data_this_month_ave <- station_data_month_ave_df[which(station_data_month_ave_df$month == this_month$month)]
+  
+  replacement_lst <- as.list(as.double(station_data_this_month_ave$value))
+  names(replacement_lst) <- station_data_this_month_ave$var
+  
+  station_data_by_month <- station_data_by_month %>% replace_na(replacement_lst)
+  
+  return(station_data_by_month)
+}
 
-this_station_data[!complete.cases(this_station_data), ]
+this_station_data_cleaned_lst <- lapply(this_station_data_by_month, function(x) replace_missing_val_w_mnth_ave(x, this_station_data_month_ave_df, month_df))
+
+this_station_data_cleaned <- rbindlist(this_station_data_cleaned_lst)
+
+# checks 
+this_station_data_cleaned[!complete.cases(this_station_data_cleaned),] # good
+replaced_dat <- this_station_data_cleaned[which(this_station_data_cleaned$date %in% this_station_data[!complete.cases(this_station_data),"date"][[1]]),] # also looks good (when compared with data)!
+
+this_station_data <- this_station_data_cleaned
 
 # get state of weather code ########
 ####################################
@@ -166,22 +190,41 @@ for(i in 1:dim(this_station_data)[1]){
 
 this_station_data$MC_100hr <- MC_100hr
 
+# looks good
+ggplot(this_station_data, aes(x=day_of_year, y = MC_100hr)) + 
+  geom_point()
 
 
+# get 1000 hour dead fuel moisture content #
+############################################
 
+# estimate rain duration
+this_station_data$rain_duration_hours <- apply(this_station_data[,"total_precipitation"], 1, function(x) get_PPT_duration(mm_to_inches*x, 0.25))
 
+this_BNDRY_week <- c("1" = NA, "2" = NA, "3" = NA, "4" = NA, "5" = NA, "6" = NA, "7" = NA)
+MC_1000hr_lst <- list()
+for(i in 1:dim(this_station_data)[1]){
 
+  if(i > 1){
+    if(this_station_data$year[i-1] != this_station_data$year[i]) message(paste("year", this_station_data$year[i], "\n"))
+  } 
+  
+  this_daily_station_data <- this_station_data[i,]
+  
+  this_EMC_max <- get_EMC(this_daily_station_data$max_relative_humidity/100, celsius_to_fahrenheit(this_daily_station_data$max_air_temp))
+  this_EMC_min <- get_EMC(this_daily_station_data$min_relative_humidity/100, celsius_to_fahrenheit(this_daily_station_data$min_air_temp))
+  
+  week_indx <- i %% 7
+  if(week_indx == 0) week_indx = 7
+  
+  this_BNDRY_week[week_indx] <-  get_BNDRY_T(this_daily_station_data$daylight_hours, this_EMC_min, this_EMC_max, this_daily_station_data$rain_duration_hours)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+  if(i < 7){
+    this_initialize_MC_1000hrs <- TRUE
+    this_MC_1000hr_week <- NA
+  } else this_initialize_MC_1000hrs <- FALSE
+  
+  MC_1000hr_lst[[i]] <- get_MC_1000hr(this_BNDRY_week, this_MC_1000hr_week, this_initialize_MC_1000hrs, this_daily_station_data$CLIMAT)
+  
+  this_MC_1000hr_week <- MC_1000hr_lst[[i]]$MC_1000hr_week
+}
