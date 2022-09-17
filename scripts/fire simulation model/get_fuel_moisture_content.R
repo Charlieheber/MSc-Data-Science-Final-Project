@@ -25,14 +25,14 @@ get_year_max_solar_radiation <- function(station_data){
 
 # load station data #################
 #####################################
-useful_cols <- c("date", "year", "day_of_year", "day_of_run", "total_solar_radiation",	
+useful_cols <- c("id", "date", "year", "day_of_year", "day_of_run", "total_solar_radiation",	
                  "ave_air_temp", "max_air_temp", "min_air_temp",
                  "ave_relative_humidity", "max_relative_humidity", "min_relative_humidity",
                  "total_precipitation", "latitude", "longitude", "CLIMAT")
 
 
 file_loc <- paste0(here::here(),  "/data/input/wildfire simulation model/station data/")
-this_station_data_all_cols <- fread(paste0(file_loc, "station_data_kettleman_hills_00_22.csv"))
+this_station_data_all_cols <- fread(paste0(file_loc, "station_data_kettleman_hills_00_22..csv"))
 
 this_station_data <- this_station_data_all_cols[,..useful_cols]
 
@@ -101,6 +101,7 @@ this_station_data_cleaned[!complete.cases(this_station_data_cleaned),] # good
 replaced_dat <- this_station_data_cleaned[which(this_station_data_cleaned$date %in% this_station_data[!complete.cases(this_station_data),"date"][[1]]),] # also looks good (when compared with data)!
 
 this_station_data <- this_station_data_cleaned
+data.table::setorder(this_station_data, id)
 
 # get state of weather code ########
 ####################################
@@ -180,7 +181,7 @@ for(i in 1:dim(this_station_data)[1]){
 
   MC_100hr[i] <- get_MC_100hr(this_daily_station_data$daylight_hours, 
                               this_EMC_min, this_EMC_max,
-                              this_daily_station_data$total_precipitation,
+                              this_daily_station_data$total_precipitation*mm_to_inches,
                               this_YMC_100hrs, 
                               this_initialize_YMC_100hrs, 
                               this_daily_station_data$CLIMAT)
@@ -190,7 +191,7 @@ for(i in 1:dim(this_station_data)[1]){
 
 this_station_data$MC_100hr <- MC_100hr
 
-# looks good
+# looks good!
 ggplot(this_station_data, aes(x=day_of_year, y = MC_100hr)) + 
   geom_point()
 
@@ -225,6 +226,19 @@ for(i in 1:dim(this_station_data)[1]){
   } else this_initialize_MC_1000hrs <- FALSE
   
   MC_1000hr_lst[[i]] <- get_MC_1000hr(this_BNDRY_week, this_MC_1000hr_week, this_initialize_MC_1000hrs, this_daily_station_data$CLIMAT)
+  MC_1000hr_lst[[i]]$date <- this_daily_station_data$date
+  MC_1000hr_lst[[i]]$id <- this_daily_station_data$id
   
   this_MC_1000hr_week <- MC_1000hr_lst[[i]]$MC_1000hr_week
 }
+
+
+this_MC_1000hr <- rbindlist(lapply(MC_1000hr_lst, function(x) data.table("id" = x$id, "date" = x$date, "MC_1000hr" = x$MC_1000hr)))
+
+this_station_data <- left_join(this_station_data, this_MC_1000hr[, c("id", "MC_1000hr")], by = "id")
+
+# looks okay? takes time to stabilise - should look into starting value
+ggplot(this_station_data, aes(x=day_of_year, y = MC_1000hr)) + 
+  geom_point()
+
+

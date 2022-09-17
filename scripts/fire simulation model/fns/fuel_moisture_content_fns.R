@@ -334,8 +334,8 @@ get_PPT_duration <- function(PPT_24hours, WETRAT){
 get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALSE, CLIMAT=NULL, verbose=FALSE){
   
   if(initialize_MC_1000hrs){
-    MC_1000hr_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
-    BNDRY_week <- c(1:7)*(10.0 + (5.0 * CLIMAT))
+    MC_1000hr_week <- c(1:1)*(10.0 + (5.0 * CLIMAT))
+    BNDRY_week <- c(1:1)*(10.0 + (5.0 * CLIMAT))
   } 
   
   BNDRY_bar <- mean(BNDRY_week)
