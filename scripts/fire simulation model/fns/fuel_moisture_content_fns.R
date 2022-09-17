@@ -252,14 +252,15 @@ get_MC_10hr <- function(RH, TEMP){
 # Initializing YMC100 at the Beginning of a Computational Period:
 #   YMC100 = 5.0 + (5.0 * CLIMAT)
 
-
+# Latitude in degrees
+# JDATE is number day of year (1-365) 
 get_daylight_hours <- function(LAT, JDATE){
   
   # transform to radians
   PHI <- LAT * (pi/180)
   
-  # solar delination 
-  DECL <- 0.41008*sin(JDATE-82)*(pi/180)
+  # solar declination in radians
+  DECL <- 0.41008*sin((JDATE-82)*(pi/180))
   
   DAYLIGHT_hours <- 24*(1 - acos(tan(PHI)*tan(DECL))/pi)
   
