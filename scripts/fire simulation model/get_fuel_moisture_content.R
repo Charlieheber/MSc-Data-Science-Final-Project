@@ -29,19 +29,24 @@ useful_cols <- c("id", "date", "year", "day_of_year", "day_of_run", "total_solar
                  "ave_air_temp", "max_air_temp", "min_air_temp",
                  "ave_relative_humidity", "max_relative_humidity", "min_relative_humidity",
                  "total_precipitation", "latitude", "longitude", "CLIMAT")
+measured_vars <- c("total_solar_radiation", "ave_air_temp", "max_air_temp", "min_air_temp",         
+                   "ave_relative_humidity", "max_relative_humidity", "min_relative_humidity", "total_precipitation")
 
 
 file_loc <- paste0(here::here(),  "/data/input/wildfire simulation model/station data/")
-this_station_data_all_cols <- fread(paste0(file_loc, "station_data_kettleman_hills_00_22..csv"))
+this_station_data_all_cols <- fread(paste0(file_loc, "station_data_kettleman_hills_00_22.csv"))
 
 this_station_data <- this_station_data_all_cols[,..useful_cols]
+
+# convert all integer to double
+this_station_data <- this_station_data %>% mutate_at(measured_vars, as.numeric)
+
+sapply(this_station_data, class)
 
 # useful quantities ###############
 ###################################
 
 mm_to_inches <- 0.0393701
-measured_vars <- c("total_solar_radiation", "ave_air_temp", "max_air_temp", "min_air_temp",         
-                   "ave_relative_humidity", "max_relative_humidity", "min_relative_humidity", "total_precipitation")
 
 month_df <- data.frame("month" = month.name, "month_no" = 1:12)
 
@@ -131,11 +136,12 @@ ggplot(state_of_weather_count) + geom_bar(aes(fill = weather, x="", y = n), stat
 # get 1 hour dead fuel moisture content ###
 ###########################################
 
-get_MC_1hr(this_station_data$ave_relative_humidity[1]/100, celsius_to_fahrenheit(this_station_data$ave_air_temp[1]),
-           this_station_data$state_of_weather[1], FALSE, FALSE)
-
 this_station_data$MC_1hr <- apply(this_station_data[, c("ave_relative_humidity", "ave_air_temp", "state_of_weather")], 1,
                                   function(x) get_MC_1hr(x[1]/100, celsius_to_fahrenheit(x[2]), x[3], FALSE))
+
+# looks good
+ggplot(this_station_data, aes(x=day_of_year, y = MC_1hr)) + 
+  geom_point()
 
 
 # get 10 hour dead fuel moisture content ##

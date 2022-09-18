@@ -352,9 +352,70 @@ get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALS
 }
 
 
+# FUELS: LIVE HERBACEOUS ###########
+####################################
 
+# The loading of the herbaceous fuels is a fuel model parameter just as the 1-hour timelag fuel loading is a fuel
+# model parameter. The user specifies the herbaceous type as annual or perennial and the NFDRS climate class of the
+# observation site. Those parameters control the rate at which the model passes through these five stages:
+# 1. pregreen (MCHERB 30 percent or less)
+# 2. greenup
+# 3. green (MCHERB greater than 120 percent)
+# 4. transition (MCHERB 30 to 120 percent)
+# 5. cured or frozen (MCHERB 30 percent or less)
+# in which MCHERB is the moisture content of the herbaceous plants. 
 
+# 1) PREGREEN: LATE SUMMER/FALL
+#   Moisture content equal to 1hour dead fuel MC
 
+# 2) GREENUP: SPRING (declared by user)
+#   MC_herb intially at 30% which increases to 120%.
+#   Length of greenup period determined by NFDRS climate class 
+#   1 week for class 1, 2 weeks for class 2, 3 weeks for class 3 and 4 weeks for class 4
+
+# 3) GREEN: WHEN MC_herb reached 120% 
+#   perennials MC increases of decreases as available MC increases or decreases
+#   annuals can only remain the same of decrease when greenup process is complete
+#   maximum value of MC_herb in 250%
+
+# 4) TRANSITION: WHEN MC_herb falls below 120% 
+#   herbaceous loading transferred to 1hr fuel class (reverse of greenup)
+#   when MC_herb falls below 30%,loading of herbaceous fuels is 0.
+#   perennials plants can pick up moisture, annuals cannot.
+
+# 5) CURED: When MC_herb falls below 30%
+#   perennials can regreen in MC increases
+#   annuals stay cured until user declares GREEN
+
+# in mor mathsy terms...
+
+# pregreen
+MC_herb = MC_1hr
+
+# at start of greenup
+MC_herb <- MC_herb_pregreen # set MC_herb to last pregreen MC
+X_1000 <- MC_1000hr # X1000 is independent variable in herbaceous fuel model (set to 1000hr MC)
+GRNDAY <- 0 # number of days elapsed since pregreen
+
+# during greenup
+DIFF <- MC_1000hr - YM1000
+X1000 <- YX1000 + DIFF*KWET*KTMP 
+
+# YM1000 is MC1000 of previous day
+# YX1000 is X1000 of previous day
+# DIFF is 24hr change in MC1000
+# KWET is wetting factor
+# KTMP is temp factor
+
+# in which:
+#   KWET:
+#   if MC_1000hr > 25%, KWET = 1
+#   if MC_1000hr < 25% & MC_1000hr > 9%, KWET = (0.0333*MC1000hr + 0.1675)
+#   if MC_1000hr < 10, KWET = 0.5
+#   if DIFF <= 0, KWET = 1
+#   KTMP:
+#   if (TMP_max + TMP_min)/2 <= 50 degrees F, KTMP = 0.6
+#   otherwise KTMP = 1
 
 
 
