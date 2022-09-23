@@ -387,19 +387,187 @@ get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALS
 #   perennials can regreen in MC increases
 #   annuals stay cured until user declares GREEN
 
-# in mor mathsy terms...
+# in more mathsy terms...
 
-# pregreen
-MC_herb = MC_1hr
+get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregreen=NULL,
+                        pregreen_DOY, greenup_DOY, curing_DOY, DOY, CLIMAT){
+  
+  # setup so pregreen_DOY is day 0
+  DOY <- DOY - pregreen_DOY  
+  greenup_DOY <-  greenup_DOY - pregreen_DOY
+  # pregreen_DOY <- 0
+  
+  # PREGREEN ####################
+  ###############################
+  if(DOY < greenup_DOY){
+    
+    message("pregreen stage detected")
+    MC_herb <- MC_1hr
+    
+    return(MC_herb)
+  } 
 
-# at start of greenup
-MC_herb <- MC_herb_pregreen # set MC_herb to last pregreen MC
-X_1000 <- MC_1000hr # X1000 is independent variable in herbaceous fuel model (set to 1000hr MC)
-GRNDAY <- 0 # number of days elapsed since pregreen
+    
+  # GREENUP/GREEN/TRANSITION/CURING ####
+  #####################################
+  if(DOY >= greenup_DOY){
+    
+    GRNDAY <- DOY - greenup_DOY # number of days since greenup has started
+    
+    # when greenup process begins these are the model settings
+    if(GRNDAY == 0){
+      MC_herb <- MC_herb_pregreen # set MC_herb to last pregreen MC
+      X_1000 <- MC_1000hr # X1000 is independent variable in herbaceous fuel model (set to 1000hr MC)
+      return(MC_herb)
+    }
+    
+    # set wetting and temp factors --
+    # -------------------------------
+    
+    if(MC_1000hr > 25){
+      KWET = 1
+    } else if(MC_1000hr < 25 & MC_1000hr > 9){
+      KWET = 0.0333*MC_1000hr + 0.1675
+    } else if(MC_1000hr < 9){
+      KWET = 0.5
+    }
+    
+    DIFF <- MC_1000hr - MC_1000hr_previous_day
+    
+    if(DIFF <= 0){
+      KWET = 1
+    }
+    
+    if((TEMP_max + TMP_min)/2 <= 50){
+      KTEMP = 0.6
+    } else KTEMP = 1
+    
+    # -------------------------------
+    
+    # independent variable in fuel moisture model
+    X_1000 = MC_1000hr_previous_day + DIFF*KWET*KTEMP
+    
+    # set MC_herb potential ---------
+    # -------------------------------
+    
+    if(CLIMAT == 1){
+      GA_herb = -70
+      GB_herb = 12.8
+      
+      ANN_ta = -150.5
+      ANN_tb = 18.4
+      PER_ta = 11.2
+      PER_tb = 7.4
+
+    } else if(CLIMAT == 2){
+      GA_herb = -100
+      GB_herb = 14
+      
+      ANN_ta = -187.7
+      ANN_tb = 19.6
+      PER_ta = -10.3
+      PER_tb = 8.3
+      
+    } else if(CLIMAT == 3){
+      GA_herb = -137.5
+      GB_herb = 15.5
+      
+      ANN_ta = -245.2
+      ANN_tb = 22.0
+      PER_ta = -42.7
+      PER_tb = 9.8
+      
+    } else if(CLIMAT == 4){
+      GA_herb = -185
+      GB_herb = 17.4
+      
+      ANN_ta = -305.2
+      ANN_tb = 24.3
+      PER_ta = -93.5
+      PER_tb = 12.2
+      
+    }
+    
+    MC_herbp = GA_herb + GB_herb * X1000
+    
+    # --------------------------------
+    
+    # fraction of greenup period that has elapsed
+    GREN = GRNDAY / (7.0 * CLIMAT) 
+    
+    if(GREN < 1){
+      message("greenup stage detected")
+      MC_herb <- MC_herb_pregreen + (MC_herbp - MC_herb_pregreen)*GREN
+      
+      return(MC_herb)
+      
+    } else if(GREN >= 1 & MC_herbp > 120){
+      
+      message("green stage detected")
+      GREN = 1 # greenup duration defined as 7xclimate_class
+      
+      MC_herb <- MC_herbp
+      
+      if(MC_herb >= 250) return(250) # MC herb cannot get larger than 250 during greenup or green periods
+
+      return(MC_herb)
+      
+    } else if(DOY < curing_DOY){
+      
+      message("transition stage detected")
+      
+      # For annuals:
+      MC_herb = ANN_ta + ANN_tb * X1000
+      
+      # For perennials:
+      MC_herb = PERT_a + PERT_b * X1000
+      
+      if(!annuals){
+        
+        if(MC_herb > 150) return(150)
+        if(MC_herb < 30) return(30)
+        
+      } else{
+        
+        if(MC_herb > MC_herb_previous_day) return(MC_herb_previous_day)
+        
+      }
+      
+      return(MC_herb)
+      
+    } else if(DOY >= curing_DOY){ # CURING
+      
+      message("curing stage detected")
+      
+      if(annuals){
+        
+        MC_herb = MC_1hr
+        
+        return(MC_herb)
+        
+      } else{
+        
+        MC_herb = PER_ta + PER_tb * X1000
+        
+        if(MC_herb > 150) return(150)
+        if(MC_herb < 30) return(30)
+        
+        return(MC_herb)
+      }
+
+      
+    }
+    
+  }
+  
+  
+}
+
+
 
 # during greenup
-DIFF <- MC_1000hr - YM1000
-X1000 <- YX1000 + DIFF*KWET*KTMP 
+# DIFF <- MC_1000hr - YM1000
+# X1000 <- YX1000 + DIFF*KWET*KTMP 
 
 # YM1000 is MC1000 of previous day
 # YX1000 is X1000 of previous day
@@ -417,10 +585,29 @@ X1000 <- YX1000 + DIFF*KWET*KTMP
 #   if (TMP_max + TMP_min)/2 <= 50 degrees F, KTMP = 0.6
 #   otherwise KTMP = 1
 
+# Next needed is the moisture content that herbaceous
+# fuels would have if the greenup period were over; this we
+# call MCHRBP (P for Potential). MCHRBP is linearly
+# related to X 1000, but the constants of the relationship are
+# functions of the NFDRS climate class. 
 
+# MC_herbp = GA_herb + GB_herb * X1000
 
+# NFDRS Climate class: HERBGA HERBGB
+# 1                    -70.0 12.8
+# 2                    -100.0 14.0
+# 3                    -137.5 15.5
+# 4                    -185.0 17.4
 
+# The length of the greenup period, in days, is seven times
+# the NFDRS climate class. The fraction of greenup period
+# that has elapsed must be calculated so that the loading of
+# the herbaceous fuel can be calculated.
 
+# GREN = GRNDAY / (7.0 * CLIMAT) 
+
+# in which GRNDAY is the number of days since the greenup
+# sequence was started. 
 
 
 
