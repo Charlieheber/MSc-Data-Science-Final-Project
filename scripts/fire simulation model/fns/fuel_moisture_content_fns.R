@@ -146,7 +146,9 @@ get_state_of_weather_code <- function(RSDS, RSDS_max, daily_PPT_inches){
 
 # If It Is Raining at the Afternoon Observation Time:
 # MC1 = 35.0 
-  
+
+# RH is given as decimal
+# TEMP in fahrenheit
 get_MC_1hr <- function(RH, TEMP, state_of_weather_code, fuel_moisture_sticks_used, MC_10_hr=NULL){
   
   # correction of EMC to EMC at fuel-moisture interface
@@ -333,9 +335,15 @@ get_PPT_duration <- function(PPT_24hours, WETRAT){
 # MC_1000_hr_week is an array of 1000hr moisture content from the last 7 days  
 get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALSE, CLIMAT=NULL, verbose=FALSE){
   
+  # initialize_MC_1000hrs = TRUE
+  # BNDRY_week = this_BNDRY_week 
+  # MC_1000hr_week = this_MC_1000hr_week
+  # initialize_MC_1000hrs = this_initialize_MC_1000hrs
+  # CLIMAT = this_daily_station_data$CLIMAT
+  
   if(initialize_MC_1000hrs){
-    MC_1000hr_week <- c(1:1)*(10.0 + (5.0 * CLIMAT))
-    BNDRY_week <- c(1:1)*(10.0 + (5.0 * CLIMAT))
+    MC_1000hr_week <- rep(1,7)*(10.0 + (5.0 * CLIMAT))
+    BNDRY_week <- rep(1,7)*(10.0 + (5.0 * CLIMAT))
   } 
   
   BNDRY_bar <- mean(BNDRY_week)
@@ -390,7 +398,22 @@ get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALS
 # in more mathsy terms...
 
 get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregreen=NULL,
-                        pregreen_DOY, greenup_DOY, curing_DOY, DOY, CLIMAT){
+                        pregreen_DOY, greenup_DOY, curing_DOY, DOY, CLIMAT,
+                        TEMP_min, TEMP_max, annuals){
+  
+  # this_daily_station_data <- this_station_data[1,]
+  # MC_1hr = this_daily_station_data$MC_1hr
+  # MC_1000hr = this_daily_station_data$MC_1000hr
+  # MC_1000hr_previous_day = this_yesterday_station_data$MC_1000hr
+  # MC_herb_pregreen= 20
+  # pregreen_DOY = this_pregreen_DOY
+  # greenup_DOY = this_greenup_DOY
+  # curing_DOY = this_curing_DOY
+  # DOY = this_daily_station_data$day_of_year
+  # CLIMAT = this_daily_station_data$CLIMAT
+  # TEMP_min = celsius_to_fahrenheit(this_daily_station_data$min_air_temp)
+  # TEMP_max = celsius_to_fahrenheit(this_daily_station_data$max_air_temp)
+  # annuals = FALSE
   
   # setup so pregreen_DOY is day 0
   DOY <- DOY - pregreen_DOY  
@@ -404,10 +427,9 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
     message("pregreen stage detected")
     MC_herb <- MC_1hr
     
-    return(MC_herb)
+    return(c("MC_herb" = MC_herb))
   } 
 
-    
   # GREENUP/GREEN/TRANSITION/CURING ####
   #####################################
   if(DOY >= greenup_DOY){
@@ -418,7 +440,7 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
     if(GRNDAY == 0){
       MC_herb <- MC_herb_pregreen # set MC_herb to last pregreen MC
       X_1000 <- MC_1000hr # X1000 is independent variable in herbaceous fuel model (set to 1000hr MC)
-      return(MC_herb)
+      return(c("MC_herb" = MC_herb))
     }
     
     # set wetting and temp factors --
@@ -438,7 +460,7 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
       KWET = 1
     }
     
-    if((TEMP_max + TMP_min)/2 <= 50){
+    if((TEMP_max + TEMP_min)/2 <= 50){
       KTEMP = 0.6
     } else KTEMP = 1
     
@@ -488,7 +510,7 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
       
     }
     
-    MC_herbp = GA_herb + GB_herb * X1000
+    MC_herbp = GA_herb + GB_herb * X_1000
     
     # --------------------------------
     
@@ -499,7 +521,7 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
       message("greenup stage detected")
       MC_herb <- MC_herb_pregreen + (MC_herbp - MC_herb_pregreen)*GREN
       
-      return(MC_herb)
+      return(c("MC_herb" = MC_herb))
       
     } else if(GREN >= 1 & MC_herbp > 120){
       
@@ -508,32 +530,32 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
       
       MC_herb <- MC_herbp
       
-      if(MC_herb >= 250) return(250) # MC herb cannot get larger than 250 during greenup or green periods
+      if(MC_herb >= 250) return(c("MC_herb" = 250)) # MC herb cannot get larger than 250 during greenup or green periods
 
-      return(MC_herb)
+      return(c("MC_herb" = MC_herb))
       
     } else if(DOY < curing_DOY){
       
       message("transition stage detected")
       
       # For annuals:
-      MC_herb = ANN_ta + ANN_tb * X1000
+      MC_herb = ANN_ta + ANN_tb * X_1000
       
       # For perennials:
-      MC_herb = PERT_a + PERT_b * X1000
+      MC_herb = PER_ta + PER_tb * X_1000
       
       if(!annuals){
         
-        if(MC_herb > 150) return(150)
-        if(MC_herb < 30) return(30)
+        if(MC_herb > 150) return(c("MC_herb" = 150))
+        if(MC_herb < 30) return(c("MC_herb" = 30))
         
       } else{
         
-        if(MC_herb > MC_herb_previous_day) return(MC_herb_previous_day)
+        if(MC_herb > MC_herb_previous_day) return(c("MC_herb" = MC_herb_previous_day))
         
       }
       
-      return(MC_herb)
+      return(c("MC_herb" = MC_herb))
       
     } else if(DOY >= curing_DOY){ # CURING
       
@@ -543,16 +565,16 @@ get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregr
         
         MC_herb = MC_1hr
         
-        return(MC_herb)
+        return(c("MC_herb" = MC_herb))
         
       } else{
         
-        MC_herb = PER_ta + PER_tb * X1000
+        MC_herb = PER_ta + PER_tb * X_1000
         
         if(MC_herb > 150) return(150)
         if(MC_herb < 30) return(30)
         
-        return(MC_herb)
+        return(c("MC_herb" = MC_herb))
       }
 
       

@@ -4,7 +4,7 @@ library(here)
 ##### LOAD PACKAGES ######################
 ##########################################
 
-script_loc <- paste0(here::here(), "/scripts/")
+script_loc <- paste0(here::here(), "/scripts/R/")
 req_packages = "general"
 source(paste0(script_loc, "libraries_and_file_locs.R"))
 
@@ -16,7 +16,12 @@ this_output_file_loc <- paste0(output_file_loc, "/wildfire simulation model")
 this_fuel_models_vals <- fread(paste0(this_input_file_loc, "/fuel_model_vals_by_model.csv"))
 
 ########################################
-
+#' Adapted from https://github.com/NCAR/fire-indices/blob/master/calc_just_erc.ncl
+#' 
+#' w1d,w10d,w100d,w1000d,wherb,wwood,depth,sg1d,sg10d,sg100d,sg1000d,sgherb,sgwood,extmoi,hd are read in according to the fuel model
+#' fm1, fm10, fm100, fm1000 are the same as mc1, mc10, mc100, mc1000, the percent moisture content of 1-, 10-, 100-, 1000-hour timelag
+#' erc is energy release component
+#'
 calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_models_vals){
   
   fuel_model = "G"
