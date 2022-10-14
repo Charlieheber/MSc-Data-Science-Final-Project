@@ -220,8 +220,8 @@ get_PPT_duration <- function(PPT_24hours, WETRAT){
 get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALSE, CLIMAT=NULL, verbose=FALSE){
   
   # initialize_MC_1000hrs = TRUE
-  # BNDRY_week = this_BNDRY_week 
-  # MC_1000hr_week = this_MC_1000hr_week
+  # BNDRY_week = this_BNDRY_week
+  # MC_1000hr_week = MC_1000hr_week_new
   # initialize_MC_1000hrs = this_initialize_MC_1000hrs
   # CLIMAT = this_daily_station_data$CLIMAT
   
@@ -242,4 +242,319 @@ get_MC_1000hr <- function(BNDRY_week, MC_1000hr_week, initialize_MC_1000hrs=FALS
   return(list("MC_1000hr_week" = MC_1000hr_week_new, "MC_1000hr" = MC_1000hr))
   
 }
+
+# FUELS: LIVE HERBACEOUS ###########
+####################################
+
+#'
+#' MC_1hr moisture content 1hour dead fuel
+#' MC_1000hr moisture content 1000 hour dead fuel on the previous day
+#' MC_herb_pregreen moisture content day before green up stage
+#' pregren_DOY day of year of pregreen stage
+#' greenup_DOY day of year of greenup stage
+#' curing_DOY day of year of curing stage
+#' DOY day of year
+#' CLIMAT climate class
+#' TEMP_min min daily temp
+#' TEMP_max max daily temp
+#' annuals annuals or perrenials
+#'
+get_MC_herb <- function(MC_1hr, MC_1000hr, MC_1000hr_previous_day, MC_herb_pregreen=NULL,
+                        pregreen_DOY, greenup_DOY, curing_DOY, DOY, CLIMAT,
+                        TEMP_min, TEMP_max, annuals, verbose=FALSE){
+  
+  # this_daily_station_data <- this_station_data[1,]
+  # MC_1hr = this_daily_station_data$MC_1hr
+  # MC_1000hr = this_daily_station_data$MC_1000hr
+  # MC_1000hr_previous_day = this_yesterday_station_data$MC_1000hr
+  # MC_herb_pregreen= 20
+  # pregreen_DOY = this_pregreen_DOY
+  # greenup_DOY = this_greenup_DOY
+  # curing_DOY = this_curing_DOY
+  # DOY = this_daily_station_data$day_of_year
+  # CLIMAT = this_daily_station_data$CLIMAT
+  # TEMP_min = celsius_to_fahrenheit(this_daily_station_data$min_air_temp)
+  # TEMP_max = celsius_to_fahrenheit(this_daily_station_data$max_air_temp)
+  # annuals = FALSE
+  
+  # setup so pregreen_DOY is day 0
+  DOY <- DOY - pregreen_DOY  
+  greenup_DOY <-  greenup_DOY - pregreen_DOY
+  # pregreen_DOY <- 0
+  
+  # PREGREEN ####################
+  ###############################
+  if(DOY < greenup_DOY){
+    
+    if(verbose) message("pregreen stage detected")
+    MC_herb <- MC_1hr
+    
+    return(c("MC_herb" = MC_herb))
+  } 
+  
+  # GREENUP/GREEN/TRANSITION/CURING ####
+  #####################################
+  if(DOY >= greenup_DOY){
+    
+    GRNDAY <- DOY - greenup_DOY # number of days since greenup has started
+    
+    # when greenup process begins these are the model settings
+    if(GRNDAY == 0){
+      MC_herb <- MC_herb_pregreen # set MC_herb to last pregreen MC
+      X_1000 <- MC_1000hr # X1000 is independent variable in herbaceous fuel model (set to 1000hr MC)
+      return(c("MC_herb" = MC_herb))
+    }
+    
+    # set wetting and temp factors --
+    # -------------------------------
+    
+    if(MC_1000hr > 25){
+      KWET = 1
+    } else if(MC_1000hr < 25 & MC_1000hr > 9){
+      KWET = 0.0333*MC_1000hr + 0.1675
+    } else if(MC_1000hr < 9){
+      KWET = 0.5
+    }
+    
+    DIFF <- MC_1000hr - MC_1000hr_previous_day
+    
+    if(DIFF <= 0){
+      KWET = 1
+    }
+    
+    if((TEMP_max + TEMP_min)/2 <= 50){
+      KTEMP = 0.6
+    } else KTEMP = 1
+    
+    # -------------------------------
+    
+    # independent variable in fuel moisture model
+    X_1000 = MC_1000hr_previous_day + DIFF*KWET*KTEMP
+    
+    # set MC_herb potential ---------
+    # -------------------------------
+    
+    if(CLIMAT == 1){
+      GA_herb = -70
+      GB_herb = 12.8
+      
+      ANN_ta = -150.5
+      ANN_tb = 18.4
+      PER_ta = 11.2
+      PER_tb = 7.4
+      
+    } else if(CLIMAT == 2){
+      GA_herb = -100
+      GB_herb = 14
+      
+      ANN_ta = -187.7
+      ANN_tb = 19.6
+      PER_ta = -10.3
+      PER_tb = 8.3
+      
+    } else if(CLIMAT == 3){
+      GA_herb = -137.5
+      GB_herb = 15.5
+      
+      ANN_ta = -245.2
+      ANN_tb = 22.0
+      PER_ta = -42.7
+      PER_tb = 9.8
+      
+    } else if(CLIMAT == 4){
+      GA_herb = -185
+      GB_herb = 17.4
+      
+      ANN_ta = -305.2
+      ANN_tb = 24.3
+      PER_ta = -93.5
+      PER_tb = 12.2
+      
+    }
+    
+    MC_herbp = GA_herb + GB_herb * X_1000
+    
+    # --------------------------------
+    
+    # fraction of greenup period that has elapsed
+    GREN = GRNDAY / (7.0 * CLIMAT) 
+    
+    if(GREN < 1){
+      if(verbose) message("greenup stage detected")
+      MC_herb <- MC_herb_pregreen + (MC_herbp - MC_herb_pregreen)*GREN
+      
+      return(c("MC_herb" = MC_herb))
+      
+    } else if(GREN >= 1 & MC_herbp > 120){
+      
+      if(verbose) message("green stage detected")
+      GREN = 1 # greenup duration defined as 7xclimate_class
+      
+      MC_herb <- MC_herbp
+      
+      if(MC_herb >= 250) return(c("MC_herb" = 250)) # MC herb cannot get larger than 250 during greenup or green periods
+      
+      return(c("MC_herb" = MC_herb))
+      
+    } else if(DOY < curing_DOY){
+      
+      if(verbose) message("transition stage detected")
+      
+      # For annuals:
+      MC_herb = ANN_ta + ANN_tb * X_1000
+      
+      # For perennials:
+      MC_herb = PER_ta + PER_tb * X_1000
+      
+      if(!annuals){
+        
+        if(MC_herb > 150) return(c("MC_herb" = 150))
+        if(MC_herb < 30) return(c("MC_herb" = 30))
+        
+      } else{
+        
+        if(MC_herb > MC_herb_previous_day) return(c("MC_herb" = MC_herb_previous_day))
+        
+      }
+      
+      return(c("MC_herb" = MC_herb))
+      
+    } else if(DOY >= curing_DOY){ # CURING
+      
+      if(verbose) message("curing stage detected")
+      
+      if(annuals){
+        
+        MC_herb = MC_1hr
+        
+        return(c("MC_herb" = MC_herb))
+        
+      } else{
+        
+        MC_herb = PER_ta + PER_tb * X_1000
+        
+        if(MC_herb > 150) return(150)
+        if(MC_herb < 30) return(30)
+        
+        return(c("MC_herb" = MC_herb))
+      }
+      
+      
+    }
+    
+  }
+  
+  
+}
+
+# FUELS: MC LIVE WOODY #################
+########################################
+
+# woody fuel moisture cannot be below 70%, 
+# in accordance with NFDRS2016. 
+# Verified w/ John Abatzoglou, implemented 3/16/2020
+
+
+get_MC_wood_pregreen <- function(CLIMAT){
+  
+  # get MC wood pregreen
+  if(CLIMAT == 1){
+    MC_wood_pregreen <- 50
+  } else if(CLIMAT == 2){
+    MC_wood_pregreen <- 60
+  } else if(CLIMAT == 3){
+    MC_wood_pregreen <- 70
+  } else if(CLIMAT == 4){
+    MC_wood_pregreen <- 80
+  }
+  
+  return(MC_wood_pregreen)
+  
+}
+
+get_MC_wood <- function(DOY, pregreen_DOY, greenup_DOY, MC_1000hr, CLIMAT, MC_wood_pregreen,
+                        MC_wood_previous_day){
+  
+  # setup so pregreen_DOY is day 0
+  DOY <- DOY - pregreen_DOY  
+  greenup_DOY <-  greenup_DOY - pregreen_DOY
+  
+  if(DOY < greenup_DOY){
+    
+    MC_wood <-get_MC_wood_pregreen(CLIMAT)
+    
+    if(MC_wood <= 70) MC_wood =70
+    
+    return(MC_wood) 
+  }
+  
+  if(DOY >= greenup_DOY){
+    
+    GRNDAY <- DOY - greenup_DOY # number of days since greenup has started
+    GREN <- GRNDAY / (7.0 * CLIMAT) 
+    
+    if(CLIMAT == 1){
+      WOOD_ga <- 12.5
+      WOOD_gb <- 7.5
+    } else if(CLIMAT == 2){
+      WOOD_ga <- -5
+      WOOD_gb <- 8.2
+    } else if(CLIMAT == 3){
+      WOOD_ga <- -22.5
+      WOOD_gb <- 8.9
+    } else if(CLIMAT == 4){
+      WOOD_ga <- -45
+      WOOD_gb <- 9.8
+    }
+    
+    
+    if(GREN < 1){
+      
+      MC_wodp <- WOOD_ga + WOOD_gb * MC_1000hr
+      
+      if(MC_wood_previous_day >= MC_wood_pregreen){
+        MC_wodi = MC_wood_previous_day 
+      } else {
+        MC_wodi = MC_wood_pregreen
+      }
+      
+      MC_wood = MC_wodi + (MC_wodp - MC_wodi) * GREN 
+      
+      if(MC_wood <= 70) MC_wood =70
+      
+      return(MC_wood)
+      
+      
+    } else if(GREN >= 1){
+      
+      MC_wood = WOOD_ga + WOOD_gb * MC_1000hr
+      
+      if(MC_wood < MC_wood_pregreen) {
+        
+        if(MC_wood <= 70) return(70)
+        
+        return(MC_wood_pregreen)
+      }
+      if(MC_wood > 200) return(200)
+      
+      if(MC_wood <= 70) MC_wood =70
+      
+      return(MC_wood)
+      
+    }
+    
+     
+  } 
+}
+
+
+
+
+
+
+
+
+
+
+
 

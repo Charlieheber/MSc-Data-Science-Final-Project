@@ -14,6 +14,9 @@ this_input_file_loc <- paste0(input_file_loc, "/wildfire simulation model")
 this_output_file_loc <- paste0(output_file_loc, "/wildfire simulation model")
 
 this_fuel_models_vals <- fread(paste0(this_input_file_loc, "/fuel_model_vals_by_model.csv"))
+this_station_data_w_MCs <- fread(paste0(this_input_file_loc, "/fuel moisture contents/station_data_kettleman_hills_00_22_w_fuel_MCs.csv"))
+
+this_fuel_model = "G"
 
 ########################################
 #' Adapted from https://github.com/NCAR/fire-indices/blob/master/calc_just_erc.ncl
@@ -24,15 +27,15 @@ this_fuel_models_vals <- fread(paste0(this_input_file_loc, "/fuel_model_vals_by_
 #'
 calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_models_vals){
   
-  fuel_model = "G"
-  fuel_models_vals = this_fuel_models_vals
-  mcherb = 1
-  fm1 = 1
-  fm10 = 1
-  fm100 = 1
-  fm1000 = 1
-  fmwood = 1
-    
+  # mcherb = this_station_data_w_MCs$MC_herb[2]
+  # fm1 = this_station_data_w_MCs$MC_1hr[2]
+  # fm10 = this_station_data_w_MCs$MC_10hr[2]
+  # fm100 = this_station_data_w_MCs$MC_100hr[2]
+  # fm1000 = this_station_data_w_MCs$MC_1000hr[2]
+  # fmwood = this_station_data_w_MCs$MC_wood[2]
+  # fuel_model = "G"
+  # fuel_models_vals = this_fuel_models_vals
+  
   fuel_model_vals <- fuel_models_vals[,c("var", fuel_model), with=FALSE]  
   
   fuel_model_vals_lst <- setNames(split(fuel_model_vals[,fuel_model, with=FALSE], seq(nrow(fuel_model_vals))), 
@@ -64,8 +67,13 @@ calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_mo
   etasdl = 0.174 * sdl^(-0.19)
   
   fctcur = 1.33 - 0.0111 * mcherb
-  fctcur = fctcur > 0
-  fctcur = fctcur < 1
+  fctcur = fctcur
+  fctcur = fctcur
+  
+  # clipping operation
+  if(fctcur < 0) fctcur = 0
+  if(fctcur > 1) fctcur = 1
+  
   wherbc = fctcur * wherb # wherbc is never initialized as this in the MATLAB code, but is a useful intermediary variable
   w1dp = w1d + wherbc
   wherbp = wherb - wherbc # wherbp here is wherbc in MATLAB code
@@ -116,7 +124,11 @@ calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_mo
   fmff = ((fm1 * hnu1) + (fm10 * hnu10) + (fm100 * hnu100)) / (hnu1 + hnu10 + hnu100) # fine dead fuel moisture content
   
   if(wtotln > 0){
-    extliv = ((2.9 * wrat * (1 - fmff / extmoi) - 0.226) * 100) > extmoi
+    extliv = ((2.9 * wrat * (1 - fmff / extmoi) - 0.226) * 100)
+    
+    # clipping operation
+    if(extliv < extmoi) extliv = extmoi
+    
   } else{
     extliv = 0
   } 
@@ -201,12 +213,20 @@ calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_mo
   livrte = wtfmle / extliv
   
   etamde = 1 - 2 * dedrte + 1.5 * (dedrte^2) - 0.5 * (dedrte^3)
-  etamde = etamde < 1
-  etamde = etamde > 0
+  etamde = etamde
+  etamde = etamde
+  
+  # clipping operation
+  if(etamde > 1) etamde = 1
+  if(etamde < 0) etamde = 0
   
   etamle = 1 - 2 * livrte + 1.5 * (livrte^2) - 0.5 * (livrte^3)
-  etamle = etamle < 1
-  etamle = etamle > 0
+  etamle = etamle
+  etamle = etamle
+  
+  # clipping operation
+  if(etamle > 1) etamle = 1
+  if(etamle < 0) etamle = 0
   
   ire = fcdede * wdedne * hd * etasdl * etamde # note in MATLAB code there is an hd and hl, but they are equal
   ire = gmapme * (ire + (fclive * wlivne * hd * etasdl * etamle))
@@ -214,7 +234,28 @@ calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_mo
   
   erc = 0.04 * ire * tau
   
+  return(erc)
+  
 } 
+
+this_station_data_w_MCs$ERC[1] = NA
+for(i in 2:dim(this_station_data_w_MCs)[1]){ # need MC_1000hr after day one so start on day 2
+  
+  if(this_station_data_w_MCs$year[i-1] != this_station_data_w_MCs$year[i]) message(paste("year", this_station_data_w_MCs$year[i], "\n"))
+  
+  this_daily_station_data_w_MCs <- this_station_data_w_MCs[i,]
+  
+  this_station_data_w_MCs$fuel_model <- this_fuel_model
+  this_station_data_w_MCs$ERC[i] <- calculate_erc(this_daily_station_data_w_MCs$MC_herb[1], this_daily_station_data_w_MCs$MC_1hr[1], 
+                                               this_daily_station_data_w_MCs$MC_10hr[1], this_daily_station_data_w_MCs$MC_100hr[1],
+                                               this_daily_station_data_w_MCs$MC_1000hr[1], this_daily_station_data_w_MCs$MC_wood[1], 
+                                               this_fuel_model, this_fuel_models_vals)[[1]]
+  
+}
+
+ggplot(this_station_data_w_MCs, aes(x=day_of_year, y = ERC, color=as.factor(year))) + 
+  geom_point()
+
 
 
 

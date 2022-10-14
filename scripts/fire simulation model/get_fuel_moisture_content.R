@@ -259,15 +259,10 @@ this_MC_herb_pregreen <- NA
 
 this_MC_herb_lst <- list(list("MC_herb" = NA, "date" = this_station_data[1,]$date, "id" = this_station_data[1,]$id))
 for(i in 2:dim(this_station_data)[1]){ # need MC_1000hr after day one so start on day 2
-# for(i in 2:300){ # need MC_1000hr after day one so start on day 2
-    
-  if(i > 1){
-    if(this_station_data$year[i-1] != this_station_data$year[i]) message(paste("year", this_station_data$year[i], "\n"))
-    this_yesterday_station_data <- this_station_data[i-1,]
-  } else {
-    this_yesterday_station_data <- data.frame()
-  }
+
+  if(this_station_data$year[i-1] != this_station_data$year[i]) message(paste("year", this_station_data$year[i], "\n"))
   
+  this_yesterday_station_data <- this_station_data[i-1,]
   this_daily_station_data <- this_station_data[i,]
   
   # get MC herb pregreen on day before greenup stage
@@ -307,4 +302,48 @@ this_station_data <- left_join(this_station_data, this_MC_herb[, c("id", "MC_her
 # weekly oscillation - doesn't make sense
 ggplot(this_station_data, aes(x=day_of_year, y = MC_herb, color=as.factor(year))) + 
   geom_point()
+
+# get live wood moisture content #########
+##########################################
+
+this_MC_wood_pregreen <- get_MC_wood_pregreen(unique(this_station_data$CLIMAT))
+
+this_MC_wood_lst <- list()
+for(i in 2:dim(this_station_data)[1]){ # need MC_1000hr after day one so start on day 2
+  
+  if(this_station_data$year[i-1] != this_station_data$year[i]) message(paste("year", this_station_data$year[i], "\n"))
+  
+  this_daily_station_data <- this_station_data[i,]
+  
+  x <- list(
+      "MC_wood" = get_MC_wood(DOY = this_daily_station_data$day_of_year, 
+                              pregreen_DOY = this_pregreen_DOY, 
+                              greenup_DOY = this_greenup_DOY,
+                              MC_1000hr = this_daily_station_data$MC_1000hr,
+                              CLIMAT = this_daily_station_data$CLIMAT,
+                              MC_wood_pregreen = this_MC_wood_pregreen,
+                              MC_wood_previous_day = this_yesterdays_MC_wood$MC_wood),
+      "date" = this_daily_station_data$date,
+      "id" = this_daily_station_data$id
+  )
+  
+  this_MC_wood_lst[[i]] <- x
+  this_yesterdays_MC_wood <- x
+}
+
+head(this_MC_wood_lst)  
+this_MC_wood <- rbindlist(lapply(this_MC_wood_lst, function(x) data.table("id" = x$id, "date" = x$date, "MC_wood" = x$MC_wood)))
+
+this_station_data <- left_join(this_station_data, this_MC_wood[, c("id", "MC_wood")], by = "id")
+
+ggplot(this_station_data, aes(x=day_of_year, y = MC_wood, color=as.factor(year))) + 
+  geom_point()
+
+# save results ###########################
+##########################################
+
+write.csv(this_station_data, file = paste0(here::here(), "/data/output/wildfire simulation model/station_data_kettleman_hills_00_22_w_fuel_MCs.csv"))
+
+
+
 
