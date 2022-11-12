@@ -1,12 +1,20 @@
 rm(list=ls())
-library(data.table)
-library(ggplot2)
+library(here)
+# library(data.table)
+# library(ggplot2)
+
+##### LOAD PACKAGES ######################
+##########################################
+
+script_loc <- paste0(here::here(), "/scripts/R/")
+req_packages = c("general", "visualisation")
+source(paste0(script_loc, "libraries_and_file_locs.R"))
 
 # functions ########################
 ####################################
 
-fns_loc <- paste0(here::here(), "/scripts/R/fire simulation model/fns/")
-source(paste0(fns_loc, "fuel_moisture_content_fns.R"))
+fns_loc <- paste0(here::here(), "/scripts/R/fns/")
+source(paste0(fns_loc, "fuel_moisture_content_fns_trim.R"))
 
 # equilbrium moisture content #####
 ###################################

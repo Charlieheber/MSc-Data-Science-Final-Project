@@ -1,24 +1,4 @@
-rm(list=ls())
-library(here)
 
-##### LOAD PACKAGES ######################
-##########################################
-
-script_loc <- paste0(here::here(), "/scripts/R/")
-req_packages = "general"
-source(paste0(script_loc, "libraries_and_file_locs.R"))
-
-##### GET INPUT DATA ####################
-#########################################
-this_input_file_loc <- paste0(input_file_loc, "/wildfire simulation model")
-this_output_file_loc <- paste0(output_file_loc, "/wildfire simulation model")
-
-this_fuel_models_vals <- fread(paste0(this_input_file_loc, "/fuel_model_vals_by_model.csv"))
-this_station_data_w_MCs <- fread(paste0(this_input_file_loc, "/fuel moisture contents/station_data_kettleman_hills_00_22_w_fuel_MCs.csv"))
-
-this_fuel_model = "G"
-
-########################################
 #' Adapted from https://github.com/NCAR/fire-indices/blob/master/calc_just_erc.ncl
 #' 
 #' w1d,w10d,w100d,w1000d,wherb,wwood,depth,sg1d,sg10d,sg100d,sg1000d,sgherb,sgwood,extmoi,hd are read in according to the fuel model
@@ -108,7 +88,7 @@ calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_mo
   } else{
     hnherb = wherbn * exp(-500. / sgherb)
   }
-
+  
   
   if((-500 / sgwood) < -180.218){
     hnwood = 0
@@ -237,26 +217,3 @@ calculate_erc <- function(mcherb,fm1,fm10,fm100,fm1000,fmwood,fuel_model,fuel_mo
   return(erc)
   
 } 
-
-this_station_data_w_MCs$ERC[1] = NA
-for(i in 2:dim(this_station_data_w_MCs)[1]){ # need MC_1000hr after day one so start on day 2
-  
-  if(this_station_data_w_MCs$year[i-1] != this_station_data_w_MCs$year[i]) message(paste("year", this_station_data_w_MCs$year[i], "\n"))
-  
-  this_daily_station_data_w_MCs <- this_station_data_w_MCs[i,]
-  
-  this_station_data_w_MCs$fuel_model <- this_fuel_model
-  this_station_data_w_MCs$ERC[i] <- calculate_erc(this_daily_station_data_w_MCs$MC_herb[1], this_daily_station_data_w_MCs$MC_1hr[1], 
-                                               this_daily_station_data_w_MCs$MC_10hr[1], this_daily_station_data_w_MCs$MC_100hr[1],
-                                               this_daily_station_data_w_MCs$MC_1000hr[1], this_daily_station_data_w_MCs$MC_wood[1], 
-                                               this_fuel_model, this_fuel_models_vals)[[1]]
-  
-}
-
-ggplot(this_station_data_w_MCs, aes(x=day_of_year, y = ERC, color=as.factor(year))) + 
-  geom_point()
-
-
-
-
-

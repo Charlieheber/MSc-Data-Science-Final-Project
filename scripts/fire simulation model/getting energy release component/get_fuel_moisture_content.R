@@ -1,27 +1,18 @@
 rm(list=ls())
-library(tidyverse)
-library(data.table)
+library(here)
+
+##### LOAD PACKAGES ######################
+##########################################
+
+script_loc <- paste0(here::here(), "/scripts/R/")
+req_packages = "general"
+source(paste0(script_loc, "libraries_and_file_locs.R"))
 
 # functions ########################
 ####################################
 
-fns_loc <- paste0(here::here(), "/scripts/R/fire simulation model/fns/")
+fns_loc <- paste0(here::here(), "/scripts/R/fns/")
 source(paste0(fns_loc, "fuel_moisture_content_fns_trim.R"))
-
-get_year_max_solar_radiation <- function(station_data){ 
-  
-  station_data_lst_by_year <- split(station_data, station_data$year)
-  
-  max_solar_rad_lst <- lapply(station_data_lst_by_year, function(x) data.frame("max_year_solar_radiation" = max(x$total_solar_radiation)))
-  
-  max_solar_rad_df <- data.table(
-    "year" = as.numeric(names(max_solar_rad_lst)),
-    rbindlist(max_solar_rad_lst)
-  )
-  
-  return(max_solar_rad_df)
-  
-} # to find yearly maximum solar radiation
 
 # load station data #################
 #####################################
