@@ -16,7 +16,8 @@
 # install.packages("leaflet")
 # install.packages("cowplot")
 # install.packages("ggthemes")
-
+# install.packages("corrplot")
+# install.packages("caret")
 
 ### LIBRARIES ###############
 #############################
@@ -57,6 +58,7 @@ if("statistical" %in% req_packages){
   library(tseries)
   library(forecast)
   library(Metrics)
+  library(caret)
 }
 
 if("visualisation" %in% req_packages){
@@ -67,7 +69,7 @@ if("visualisation" %in% req_packages){
   library(RColorBrewer)
   library(cowplot)  # for plot_grid fxn
   library(ggthemes)  # install this package for additional ggplot themes
-  
+  library(corrplot)
 }
 
 
