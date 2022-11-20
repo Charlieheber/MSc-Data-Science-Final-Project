@@ -1,0 +1,69 @@
+Building Logistic Model
+1) Want to build 2 models 
+	Logistic Model 1 - Probability of a fire ignition per day.
+	Logistic Model 2 - Probability of a large fire given an ignition.  
+
+	Fire ignition - fire ignition of any size (0.26 acres to 5000+ acres).
+	Large fire ignition - fire ignition of size larger than 100+ acres.
+
+2) Data 
+	9 entries w/ no wind speed/direction information were removed from the dataset.
+	Logistic model 1: 2503 fire ignitions out of 5590 days
+	Logistic model 2: 151 large fire ignitions 2503 
+
+3) Potential Predictors - ERC(G), average wind speed, max wind gust, mean wind direction
+
+4) Correlation Matrix - max wind speed and ave wind gust are highly correlated, so only keep one
+			keep one w/ lowest p-value? ave_wind_speed
+
+5) Univariable analysis w/ ERC(G), average wind speed and mean wind direction 
+	logistic models are built w/ each predictor variable. All variables w/ a p-value of lower than 0.25 are kept 
+	for mulitvariable analysis.
+	cutoff value of 0.25 supported by literature (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4828741/)	
+
+	Model 1 - all have a p-value lower than 0.25
+
+	Model 2 - ERC and ave_wind_speed have a p-value lower than 0.25 so can be included for multivariable regression, 
+		  mean wind direction should be discarded.
+
+6) Multivariable model comparisons
+	
+	Model 1.1 average wind speed, mean wind direction, ERC
+	mean wind direction has a p-value of 0.262 (>0.01), can be excluded
+
+	Model 1.2 average wind speed, ERC
+
+	Changes in coefficient values are negligible from each model so mean wind direction 
+	is excluded from future analysis.
+
+	Model 2.1 average wind speed, mean wind direction, ERC
+	mean wind direction has a p-value of 0.215 (>0.01), can be excluded
+
+	Model 2.2 average wind speed, ERC
+
+	Changes in coefficient values are negligible from each model so mean wind direction 
+	is excluded from future analysis.
+
+7)  Test linearity assumption
+	
+	Logit plots produced to test linear assumption between predictor variables and logit
+
+	Model 1: Linear assumption holds for ERC and average wind speed
+
+	Model 2: Non-linear relationships observed for both ERC and average wind speed
+	Model 2.3 - ERC polynomial order 2 and polynomial average wind speed order 2
+
+8) Influential Analysis 
+	Note that, not all outliers are influential observations. 
+	To check whether the data contains potential influential observations, 
+	the standardized residual error can be inspected. 
+	Data points with an absolute standardized residuals above 3 represent possible outliers and may deserve closer attention.
+
+	For both models there are no influential values that need to be removed from the dataset
+
+9) Likelihood test
+	Model 1
+	It is found that a model w/ just ERC is as statistcally significant as ERC & and average wind speed
+
+	Model 2
+`	Its is found that the polynomial model is just as statistically significant as linear.	 

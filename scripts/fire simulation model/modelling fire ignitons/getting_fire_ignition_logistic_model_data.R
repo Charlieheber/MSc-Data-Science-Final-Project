@@ -43,8 +43,20 @@ this_fire_dat_w_ERC_wind_speed <- this_fire_dat_w_ERC_wind_speed %>%
                   FIRE_SIZE_CLASS_G=0))
 
 
+this_fire_dat_w_ERC_wind_speed[which(this_fire_dat_w_ERC_wind_speed$ERC > 100), "ERC"] <- 100
+
+
+
 #### GET USEFUL VARS ###################
 ########################################
+
+# A=0-0.25 acres, 
+# B=0.26-9.9 acres, 
+# C=10.0-99.9 acres, 
+# D=100-299 acres, 
+# E=300 to 999 acres, 
+# F=1000 to 4999 acres, 
+# and G=5000+ acres
 
 this_fire_dat_w_ERC_wind_speed$num_ignitions <- (# this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_A +
   this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_B +

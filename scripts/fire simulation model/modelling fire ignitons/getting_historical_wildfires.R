@@ -79,7 +79,7 @@ unique(this_fire_dat$FIRE_SIZE_CLASS)
 this_fire_dat_fire_size_cls_count <- this_fire_dat %>%
   group_by(FIRE_SIZE_CLASS) %>%
   summarise(n = n())
-  
+
 ggplot(data=this_fire_dat_fire_size_cls_count, aes(x=FIRE_SIZE_CLASS, y=n)) +
   geom_bar(stat="identity", fill="steelblue")+
   theme_minimal()
@@ -177,7 +177,7 @@ leaflet(this_fire_dat) %>%
 
 
 
-               
+
 ### GET FIRE IGNITION DAYS ####################
 ###############################################
 
@@ -186,7 +186,7 @@ this_fire_dat_n_fires_by_DOY <- this_fire_dat %>%
   summarise(n_fires = n())
 
 this_fire_dat_n_fires_by_DOY_size_class <- pivot_wider(this_fire_dat_n_fires_by_DOY, names_from=FIRE_SIZE_CLASS, values_from=n_fires,
-            names_prefix = "FIRE_SIZE_CLASS_") %>% ungroup()
+                                                       names_prefix = "FIRE_SIZE_CLASS_") %>% ungroup()
 
 
 # add id columns (from station data)
