@@ -18,6 +18,7 @@
 # install.packages("ggthemes")
 # install.packages("corrplot")
 # install.packages("caret")
+#  install.packages("sp")
 
 ### LIBRARIES ###############
 #############################
@@ -45,6 +46,7 @@ if("spatial" %in% req_packages){
   message("loading spatial packages")
   library(rgdal)
   library(sf)
+  library(sp)
   library(raster)
   library(rgeos)
   library(maptools)
