@@ -144,10 +144,6 @@ get_burn_delay <- function(grid_cell_NNs, current_burn_time){
   
 }
 
-# where does fire start?
-this_fire_igntion_cell <- 44
-this_grid <- this_grid_shp@data
-
 run_burn_simulation <- function(grid, fire_igntion_cell){
   
   # grid <- this_grid 
@@ -221,37 +217,34 @@ run_burn_simulation <- function(grid, fire_igntion_cell){
   
 }
 
-this_grid_sim <- run_burn_simulation(this_grid, 44)
+# where does fire start?
+this_fire_igntion_cell <- 18
+this_grid <- this_grid_shp@data
+
+
+this_grid_sim <- run_burn_simulation(this_grid, this_fire_igntion_cell)
 
 ##### VISUALISE BURN SIMULATION #########
 #########################################
+max(this_grid_sim$burn_delay)
 
 take_burn_sim_snapshot <- function(grid, time){
   grid[grid$burn_delay < time,] 
 }  
 
-this_snapshot_times <- matrix(1:6*rep(10, 6))
+this_snapshot_times <- matrix(1:9*rep(10, 9))
 
 this_grid_sim_snapshots <- apply(this_snapshot_times, 1, function(x) take_burn_sim_snapshot(this_grid_sim, x))
 
-
 fire_pal <- colorNumeric(c("blue", "red"), c(TRUE, FALSE))
-
+fire_map_list <- list()
 for (i in 1:length(this_grid_sim_snapshots)){
-  i = 5
+  
+  print(i)
   this_grid_shp@data$on_fire <- this_grid_shp@data$locnum %in% this_grid_sim_snapshots[[i]]$locnum
-  
-  
-  leaflet(this_grid_shp) %>%
-    addPolygons(fillColor = ~fire_pal(on_fire)) %>%
-    addLabelOnlyMarkers(data=this_grid_shp@data, 
-                        lng=~lon, lat=~lat, 
-                        label=~locnum, 
-                        labelOptions = labelOptions(noHide = T, direction = 'top', textOnly = T,
-                                                    offset = c(0, 5)))
+  shp_df <- broom::tidy(this_grid_shp, region = "on_fire")
+  fire_map_list[[i]] <- ggplot() + geom_polygon(data = shp_df, aes(x = long, y = lat, group = group), colour = "black", fill = NA)
 
-  
 }
 
-
-raster::plot(this_grid_shp, col=) 
+plot_grid(plotlist = fire_map_list)

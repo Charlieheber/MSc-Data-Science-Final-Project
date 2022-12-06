@@ -17,7 +17,7 @@ this_fire_dat_w_ERC_wind_speed <- fread(paste0(input_file_loc, "/station data/st
 this_fire_size_classes <- c("FIRE_SIZE_CLASS_A", "FIRE_SIZE_CLASS_B", "FIRE_SIZE_CLASS_C",
                             "FIRE_SIZE_CLASS_D", "FIRE_SIZE_CLASS_E", 
                             "FIRE_SIZE_CLASS_F", "FIRE_SIZE_CLASS_G")
-this_large_fire_size_classes <- c("FIRE_SIZE_CLASS_D", "FIRE_SIZE_CLASS_E", 
+this_large_fire_size_classes <- c("FIRE_SIZE_CLASS_C", "FIRE_SIZE_CLASS_D", "FIRE_SIZE_CLASS_E", 
                                   "FIRE_SIZE_CLASS_F", "FIRE_SIZE_CLASS_G")
 
 #### BUILD LOGISTIC MODELS ###############
@@ -58,8 +58,13 @@ apply(this_fire_dat_logit_model2_vars, 2, function(x) sum(is.na(x)))
 this_fire_dat_logit_model1_vars <- this_fire_dat_logit_model1_vars[!is.na(this_fire_dat_logit_model1_vars$ave_wind_speed),]
 this_fire_dat_logit_model2_vars <- this_fire_dat_logit_model2_vars[!is.na(this_fire_dat_logit_model2_vars$ave_wind_speed),]
 
+# Two Sample t-test - ERC of fire ignition days is statistically different to non-igntions 
 t.test(this_fire_dat_logit_model2_vars[this_fire_dat_logit_model2_vars$large_fire_ignition_day, "ERC"],
        this_fire_dat_logit_model2_vars[!this_fire_dat_logit_model2_vars$large_fire_ignition_day, "ERC"])
+
+t.test(this_fire_dat_logit_model2_vars[this_fire_dat_logit_model1_vars$fire_ignition_day, "ERC"],
+       this_fire_dat_logit_model2_vars[!this_fire_dat_logit_model1_vars$fire_ignition_day, "ERC"])
+
 
 print(paste("Model 1:", sum(this_fire_dat_logit_model1_vars$fire_ignition_day), "fire ignitions days out of", dim(this_fire_dat_logit_model1_vars)[1]))
 print(paste("Model 2:", sum(this_fire_dat_logit_model2_vars$large_fire_ignition_day), "large fire ignitions", dim(this_fire_dat_logit_model2_vars)[1]))
@@ -132,7 +137,6 @@ large_fire_ignition_day_ERC_plot <- ggplot(this_fire_dat_logit_model2_vars, aes(
 
 plot_grid(fire_ignition_day_ERC_plot, large_fire_ignition_day_ERC_plot)
 
-
 # STEP 1: CORRELATION MATRIX ###
 ################################
 
@@ -145,8 +149,8 @@ corrplot(cor_matrix_logit_model, type = "upper", order = "hclust",
 # max wind speed and ave wind gust are highly correlated (ya doy) so only keep one
 # keep one w/ lowest p-value? ave_wind_speed
 
-this_fire_dat_logit_model1_vars_lst <- lapply(this_fire_dat_logit_model1_vars_lst, function(x) x %>% select(!max_wind_gust))
-this_fire_dat_logit_model2_vars_lst <- lapply(this_fire_dat_logit_model2_vars_lst, function(x) x %>% select(!max_wind_gust))
+this_fire_dat_logit_model1_vars_lst <- lapply(this_fire_dat_logit_model1_vars_lst, function(x) x %>% dplyr::select(!max_wind_gust))
+this_fire_dat_logit_model2_vars_lst <- lapply(this_fire_dat_logit_model2_vars_lst, function(x) x %>% dplyr::select(!max_wind_gust))
 
 # STEP 2: UNIVARIABLE ANALYSIS ####
 ###################################
@@ -194,31 +198,31 @@ round(model_1_delta.coef, 3)
 
 # model 2
 # use class weights to address imbalance
-large_fire_class_weights = sum(this_fire_dat_logit_model2_vars$large_fire_ignition_day)/dim(this_fire_dat_logit_model2_vars)[1]
-
-this_fire_dat_logit_model2_vars_lst$train <- this_fire_dat_logit_model2_vars_lst$train %>%
-  mutate(
-      model_2_class_weights = case_when(
-        large_fire_ignition_day ~ 1 - large_fire_class_weights,
-        !large_fire_ignition_day ~ large_fire_class_weights,
-      ) 
-  )
+# large_fire_class_weights = sum(this_fire_dat_logit_model2_vars$large_fire_ignition_day)/dim(this_fire_dat_logit_model2_vars)[1]
+# 
+# this_fire_dat_logit_model2_vars_lst$train <- this_fire_dat_logit_model2_vars_lst$train %>%
+#   mutate(
+#       model_2_class_weights = case_when(
+#         large_fire_ignition_day ~ 1 - large_fire_class_weights,
+#         !large_fire_ignition_day ~ large_fire_class_weights,
+#       ) 
+#   )
 
 # model 2.1: predictors - ave_wind_speed, mean_wind_direction, ERC
-model_2.1 <- glm(large_fire_ignition_day~ave_wind_speed+mean_wind_direction+ERC, family=quasibinomial(link="logit"), 
+model_2.1 <- glm(large_fire_ignition_day~ave_wind_speed+ERC, family=quasibinomial(link="logit"), 
                  data=this_fire_dat_logit_model2_vars_lst$train)
 summary(model_2.1)
 
-# mean_wind_direction has a p value of 0.215 --> can be excluded!
-
-# model 2.2: predictors - ave_wind_speed, ERC
-model_2.2 <- glm(large_fire_ignition_day~ave_wind_speed+ERC, family=quasibinomial(link="logit"), 
-                 data=this_fire_dat_logit_model2_vars_lst$train)
-summary(model_2.2)
-
-# compare the changes in coefficients for each variable in model 2.1 and 2.2
-model_2_delta.coef <- abs((coef(model_2.2)-coef(model_2.1)[-3]))/coef(model_2.1)[-3]
-round(model_2_delta.coef, 3)
+# # mean_wind_direction has a p value of 0.215 --> can be excluded!
+# 
+# # model 2.2: predictors - ave_wind_speed, ERC
+# model_2.2 <- glm(large_fire_ignition_day~ave_wind_speed+ERC, family=quasibinomial(link="logit"), 
+#                  data=this_fire_dat_logit_model2_vars_lst$train)
+# summary(model_2.2)
+# 
+# # compare the changes in coefficients for each variable in model 2.1 and 2.2
+# model_2_delta.coef <- abs((coef(model_2.2)-coef(model_2.1)[-3]))/coef(model_2.1)[-3]
+# round(model_2_delta.coef, 3)
 
 # STEP 3: GET PROBABILITIES & PREDICTIONS ##
 ############################################
@@ -230,9 +234,9 @@ head(model_1.2_pred.classes, 100)
 
 # Predict the probability (p) of large fire ignition
 # model 2.2
-model_2.2_probs <- predict(model_2.2, type = "response")
-model_2.2_pred.classes <- ifelse(model_2.2_probs > 0.5, "ignition_to_large_fire", "ignition_not_to_large_fire")
-head(model_2.2_pred.classes, 100)
+model_2.1_probs <- predict(model_2.1, type = "response")
+model_2.1_pred.classes <- ifelse(model_2.1_probs > 0.5, "large_fire_igntion_day", "non_large_fire_igntion_day")
+head(model_2.1_pred.classes, 100)
 
 # STEP 4: TEST LINEARITY ASSUMPTION ########
 ############################################
@@ -251,12 +255,12 @@ ggplot(this_fire_dat_logit_model_1_2_train_pred_logit, aes(logit, predictor.valu
   facet_wrap(~predictors, scales = "free_y")
 
 # model 2
-this_fire_dat_logit_model_2_2_train_pred_logit <- this_fire_dat_logit_model2_vars_lst$train[, ..this_final_predictors] %>%
-  mutate(logit = log(model_2.2_probs/(1-model_2.2_probs))) %>%
+this_fire_dat_logit_model_2_1_train_pred_logit <- this_fire_dat_logit_model2_vars_lst$train[, ..this_final_predictors] %>%
+  mutate(logit = log(model_2.1_probs/(1-model_2.1_probs))) %>%
   gather(key = "predictors", value = "predictor.value", -logit)
 
 
-ggplot(this_fire_dat_logit_model_2_2_train_pred_logit, aes(logit, predictor.value))+
+ggplot(this_fire_dat_logit_model_2_1_train_pred_logit, aes(logit, predictor.value))+
   geom_point(size = 0.5, alpha = 0.5) +
   geom_smooth(method = "loess") + 
   theme_bw() + 
@@ -267,18 +271,18 @@ ggplot(this_fire_dat_logit_model_2_2_train_pred_logit, aes(logit, predictor.valu
 # FOR MODEL 2 ##############################
 
 # model 2.3 - predictors poly(ERC,2), poly(ave_wind_speed,2)
-model_2.3 <- glm(large_fire_ignition_day~poly(ERC,2)+poly(ave_wind_speed,2), family=quasibinomial(link="logit"), 
+model_2.2 <- glm(large_fire_ignition_day~poly(ERC,2)+poly(ave_wind_speed,2), family=quasibinomial(link="logit"), 
                  data=this_fire_dat_logit_model2_vars_lst$train)
-summary(model_2.3)
+summary(model_2.2)
 
-model_2.3_probs <- predict(model_2.3, type = "response")
-model_2.3_pred.classes <- ifelse(model_2.3_probs > 0.5, "ignition_to_large_fire", "ignition_not_to_large_fire")
+model_2.2_probs <- predict(model_2.2, type = "response")
+model_2.2_pred.classes <- ifelse(model_2.2_probs > 0.5, "ignition_to_large_fire", "ignition_not_to_large_fire")
 
-this_fire_dat_logit_model_2_3_train_pred_logit <- this_fire_dat_logit_model2_vars_lst$train[, ..this_final_predictors] %>%
-  mutate(logit = log(model_2.3_probs/(1-model_2.3_probs))) %>%
+this_fire_dat_logit_model_2_2_train_pred_logit <- this_fire_dat_logit_model2_vars_lst$train[, ..this_final_predictors] %>%
+  mutate(logit = log(model_2.2_probs/(1-model_2.2_probs))) %>%
   gather(key = "predictors", value = "predictor.value", -logit)
 
-ggplot(this_fire_dat_logit_model_2_3_train_pred_logit, aes(logit, predictor.value))+
+ggplot(this_fire_dat_logit_model_2_2_train_pred_logit, aes(logit, predictor.value))+
   geom_point(size = 0.5, alpha = 0.5) +
   geom_smooth(method = "loess") + 
   theme_bw() + 
@@ -295,7 +299,7 @@ ggplot(this_fire_dat_logit_model_2_3_train_pred_logit, aes(logit, predictor.valu
 # Data points with an absolute standardized residuals above 3 represent possible outliers and may deserve closer attention.
 
 plot(model_1.2, which = 4, id.n = 3)
-plot(model_2.2, which = 4, id.n = 3)
+plot(model_1.1, which = 4, id.n = 3)
 
 # Extract model results
 # model 1
@@ -330,7 +334,7 @@ ggplot(model_2.2.data, aes(index, .std.resid)) +
 
 # Likelihood Test: model_1.1:model_1.2
 anova(model_1.1, model_1.2, test ="Chisq")
-# p-value of 0.97 - model 1.1 is not statistically significant from model 1.2 (discard model 1.1)
+# p-value of 0.36 - model 1.1 is not statistically significant from model 1.2 (discard model 1.1)
 
 # is a model w/ just ERC statistically significant from model w/ ERC & ave_wind_speed?
 model_1.3 <- glm(fire_ignition_day~ERC, family=binomial(link="logit"), data=this_fire_dat_logit_model1_vars_lst$train)
@@ -339,23 +343,26 @@ model_1.3 <- glm(fire_ignition_day~ERC, family=binomial(link="logit"), data=this
 anova(model_1.2, model_1.3, test ="Chisq")
 # p-value < 0.01 - model 1.2 is statistically significant from model 1.3 - model 1.2 should be retained 
 
+# model_2.3 <- NULL # haven't built wind speed model so dont discard yet
+
 # model 2
-# model_2.1 - predictors: ave_wind_speed, mean_wind_direction, ERC
-# model_2.2 - predictors: ave_wind_speed, ERC
-# model_2.4 - predictors: ERC
+# model_2.1 - predictors: ave_wind_speed, ERC
+# model_2.2 - predictors: poly(ERC,2) poly(ave_wind_speed,2)
 
 # Likelihood Test
 anova(model_2.1, model_2.2, test ="Chisq")
-# p-value of 0.21 - model 2.1 is not statistically significant from model 2.2 (discard model 2.1)
+# p-value of 0.02 - model 2.1 is not statistically significant from model 2.2 (discard model 2.2)
 
-anova(model_2.2, model_2.4, test ="Chisq")
+model_2.2 <- NULL
 
 # is a model w/ just ERC statistically significant from model w/ ERC & ave_wind_speed?
-model_2.4 <- glm(large_fire_ignition_day~ERC, family=binomial(link="logit"), data=this_fire_dat_logit_model2_vars_lst$train)
-summary(model_2.4)
+model_2.3 <- glm(large_fire_ignition_day~ERC, family=binomial(link="logit"), data=this_fire_dat_logit_model2_vars_lst$train)
+summary(model_2.3)
 
-anova(model_2.3, model_2.4, test ="Chisq")
+anova(model_2.1, model_2.3, test ="Chisq")
+# p-value < 0.01 - model 2.1 is statistically significant from model 2.3 - model 2.2 should be retained 
 
+model_2.3 <- NULL
 
 # FINAL MODEL VALIDATION ##############
 #######################################
@@ -367,7 +374,7 @@ anova(model_2.3, model_2.4, test ="Chisq")
 # 1) make predictions on test dataset
 
 this_fire_dat_logit_model1_vars_lst$test$fire_ignition_day_model_prob <- predict(model_1.3, this_fire_dat_logit_model1_vars_lst$test[, c("ERC")], type="response")
-this_fire_dat_logit_model2_vars_lst$test$large_fire_ignition_day_model_prob <- predict(model_2.4, this_fire_dat_logit_model2_vars_lst$test[, c("ERC", "ave_wind_speed")], type="response")
+this_fire_dat_logit_model2_vars_lst$test$large_fire_ignition_day_model_prob <- predict(model_2.2, this_fire_dat_logit_model2_vars_lst$test[, c("ERC", "ave_wind_speed")], type="response")
 
 # 2) Bin data for model 1
 
@@ -376,8 +383,8 @@ model1_binned_test_data$bin <- findInterval(this_fire_dat_logit_model1_vars_lst$
 model1_binned_test_data <- model1_binned_test_data %>%
   mutate(
     fire_ignition_day_model_pred = case_when(
-      model_prob >= 0.5 ~ TRUE,
-      model_prob < 0.5 ~ FALSE
+      fire_ignition_day_model_prob >= 0.5 ~ TRUE,
+      fire_ignition_day_model_prob < 0.5 ~ FALSE
     ),
     midpoint = case_when(
       bin == 1 ~ 5,
@@ -408,11 +415,11 @@ model1_binned_test_data$prop_fire_ignition_days_pred <- model1_binned_test_data$
 
 model2_binned_test_data <- this_fire_dat_logit_model2_vars_lst$test
 model2_binned_test_data$bin <- findInterval(this_fire_dat_logit_model2_vars_lst$test$ERC, c(0,10,20,30,40,50,60,70,80,90,100))
-model2_binned_test_data <- model1_binned_test_data %>%
+model2_binned_test_data <- model2_binned_test_data %>%
   mutate(
     fire_ignition_day_model_pred = case_when(
-      model_prob >= 0.5 ~ TRUE,
-      model_prob < 0.5 ~ FALSE
+      large_fire_ignition_day_model_prob >= 0.5 ~ TRUE,
+      large_fire_ignition_day_model_prob < 0.5 ~ FALSE
     ),
     midpoint = case_when(
       bin == 1 ~ 5,
@@ -428,18 +435,16 @@ model2_binned_test_data <- model1_binned_test_data %>%
     )
   )
 
-model1_binned_test_data <- model1_binned_test_data %>%
+model2_binned_test_data <- model2_binned_test_data %>%
   group_by(bin) %>%
   summarise(
     midpoint = unique(midpoint),
     num_days = n(),
-    obs_fire_ignition_days = sum(fire_ignition_day),
-    pred_fire_ignition_days = sum(fire_ignition_day_model_prob)
+    obs_large_fire_ignition_days = sum(large_fire_ignition_day),
+    pred_large_fire_ignition_days = sum(large_fire_ignition_day_model_prob)
   )
-model1_binned_test_data$prop_fire_ignition_days_obs <- model1_binned_test_data$obs_fire_ignition_days/model1_binned_test_data$num_days
-model1_binned_test_data$prop_fire_ignition_days_pred <- model1_binned_test_data$pred_fire_ignition_days/model1_binned_test_data$num_days
-
-
+model2_binned_test_data$prop_large_fire_ignition_days_obs <- model2_binned_test_data$obs_large_fire_ignition_days/model1_binned_test_data$num_days
+model2_binned_test_data$prop_large_fire_ignition_days_pred <- model2_binned_test_data$pred_large_fire_ignition_days/model1_binned_test_data$num_days
 
 
 ggplot(this_fire_dat_logit_model1_vars_lst$train, aes(x=ERC, y=as.numeric(fire_ignition_day))) +
@@ -449,8 +454,23 @@ ggplot(this_fire_dat_logit_model1_vars_lst$train, aes(x=ERC, y=as.numeric(fire_i
   ylab("P(fire ignition day)") + xlab("ERC")
 
 
+ggplot(this_fire_dat_logit_model2_vars_lst$train, aes(x=ERC, y=as.numeric(large_fire_ignition_day))) +
+  stat_smooth(method="glm", color=fire_color, se=FALSE,
+              method.args = list(family=binomial)) +
+  geom_point(data=model2_binned_test_data, aes(x=midpoint, y=prop_large_fire_ignition_days_obs), color="grey", size=3) +
+  ylab("P(large fire ignition day)") + xlab("ERC")
 
 
+#### SAVE MODELS #############
+##############################
+
+model_1.2
+model_1.3
+model_2.1
+
+saveRDS(model_1.2, paste0(output_file_loc, "/models/fire_igntion_day_vars_ERC_+_ave_ws.rds"))
+saveRDS(model_1.3, paste0(output_file_loc, "/models/fire_igntion_day_vars_ERC.rds"))
+saveRDS(model_2.1, paste0(output_file_loc, "/models/large_fire_igntion_day_vars_ERC_+_ave_ws.rds"))
 
 
 

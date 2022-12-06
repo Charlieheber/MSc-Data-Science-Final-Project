@@ -132,6 +132,13 @@ for(i in 1:num_validation_yrs){
 mean_absolute_error(ERC_validation, ERC_TBATS_pred)
 mean_absolute_error(ERC_validation, ERC_ARIMA_pred)
 
+### SAVE BOTH MODELS ####################
+#########################################
+
+saveRDS(ERC_TBATS_model, paste0(output_file_loc, "/models/ERC_TSM_TBATS.rds"))
+saveRDS(ERC_ARIMA_model_bestfit, paste0(output_file_loc, "/models/ERC_TSM_ARIMA.rds"))
+
+
 
 
 

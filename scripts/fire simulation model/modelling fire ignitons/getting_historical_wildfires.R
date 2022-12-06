@@ -43,10 +43,19 @@ this_station_dat <- fread(paste0(input_file_loc, "/wildfire simulation model/sta
 ##############################################
 
 this_rough_fire_dat$dist_from_study_area_km <- geosphere::distHaversine(this_study_area_lon_lat, this_rough_fire_dat[,c("LONGITUDE", "LATITUDE")])/1000
-
 this_fire_dat <- this_rough_fire_dat[this_rough_fire_dat$dist_from_study_area_km <= this_study_area_radius_km,]
 
-length(unique(this_fire_dat$DISCOVERY_DATE))
+# DENSITY PLOT
+min(this_rough_fire_size_dat$FIRE_SIZE)
+max(this_rough_fire_size_dat$FIRE_SIZE)
+ggplot(this_rough_fire_size_dat[this_rough_fire_size_dat$FIRE_SIZE > 0,], 
+       aes(x=log(FIRE_SIZE))) + geom_density() + xlim(-3,4)
+
+
+### ONLY KEEP FIRES FROM CLASS C ONWARDS #####
+##############################################
+
+this_fire_dat <- this_fire_dat[this_fire_dat$FIRE_SIZE_CLASS %in% c("C", "D", "E", "F", "G"),] 
 
 #### GET DATA SUMMARY ########################
 ##############################################
@@ -149,8 +158,8 @@ ggplot(data=this_fire_dat_fire_disc_date_count,
 # F=1000 to 4999 acres, 
 # and G=5000+ acres
 
-fire_size_col <- RColorBrewer::brewer.pal(7, "Reds")
-fire_size_labels <- c("A (0-0.25)", "B (0.26-9.9)", "C (10-99.9)", 
+fire_size_col <- RColorBrewer::brewer.pal(5, "Reds")
+fire_size_labels <- c("C (10-99.9)", 
                       "D (100-299)", "E (300-999)", "F (1000-4999)", "G (5000+ acres)")
 fire_size_title <- "Fire Size Class (acres)"
 
@@ -162,20 +171,12 @@ fire_size_pal <- colorFactor(
 leaflet(this_fire_dat) %>%
   addProviderTiles("Esri.WorldImagery") %>%
   addProviderTiles("Stamen.TonerLabels") %>%
-  addCircleMarkers(lng=~LONGITUDE, lat=~LATITUDE, radius=3, weight=0.1, fillOpacity=1, opacity=1,
+  addCircleMarkers(lng=~LONGITUDE, lat=~LATITUDE, radius=4, weight=2, fillOpacity=1, opacity=1,
                    fillColor=~fire_size_pal(FIRE_SIZE_CLASS), color="black") %>%
   addLegend(
     "bottomleft", colors=fire_size_col, labels=fire_size_labels, title=fire_size_title, 
     opacity=1
   )
-
-
-
-
-
-
-
-
 
 
 ### GET FIRE IGNITION DAYS ####################
@@ -202,14 +203,16 @@ this_fire_dat_n_fires_by_DOY_size_class <- this_fire_dat_n_fires_by_DOY_size_cla
 #### SAVE RESULT #################################
 ##################################################
 
-file_output_name <- paste0("kettleman_hils_", this_study_years[1], "_", this_study_years[2], "_", this_study_area_radius_km,"_km_ignition_days_by_fire_size_class.csv")
+file_output_name1 <- paste0("kettleman_hils_", this_study_years[1], "_", this_study_years[2], "_", this_study_area_radius_km,"_km_ignition_days_by_fire_size_class.csv")
+file_output_name2 <- paste0("kettleman_hils_", this_study_years[1], "_", this_study_years[2], "_", this_study_area_radius_km,"_km_fires.csv")
 
 write.csv(this_fire_dat_n_fires_by_DOY_size_class, 
-          paste0(output_file_loc, "/wildfire simulation model/", file_output_name),
+          paste0(output_file_loc, "/wildfire simulation model/", file_output_name1),
           row.names=FALSE)
 
-
-
+write.csv(this_fire_dat, 
+          paste0(output_file_loc, "/wildfire simulation model/", file_output_name2),
+          row.names=FALSE)
 
 
 

@@ -28,7 +28,7 @@ colnames(this_station_dat_w_ERC)
 
 this_fire_dat_w_ERC_wind_speed_raw <- this_station_dat_w_ERC[, c("id", "date", "year", "day_of_year", "ERC")] %>%
   left_join(this_station_dat_w_wind_speed[, c("id","ave_wind_speed", "mean_wind_direction", "max_wind_gust")], by="id") %>%
-  left_join(this_fire_dat[, c("DISCOVERY_DOY", "id", "FIRE_SIZE_CLASS_A", "FIRE_SIZE_CLASS_B", "FIRE_SIZE_CLASS_C", "FIRE_SIZE_CLASS_D", "FIRE_SIZE_CLASS_E",
+  left_join(this_fire_dat[, c("DISCOVERY_DOY", "id", "FIRE_SIZE_CLASS_C", "FIRE_SIZE_CLASS_D", "FIRE_SIZE_CLASS_E",
                               "FIRE_SIZE_CLASS_F", "FIRE_SIZE_CLASS_G")], by="id")
 
 
@@ -45,8 +45,6 @@ this_fire_dat_w_ERC_wind_speed <- this_fire_dat_w_ERC_wind_speed %>%
 
 this_fire_dat_w_ERC_wind_speed[which(this_fire_dat_w_ERC_wind_speed$ERC > 100), "ERC"] <- 100
 
-
-
 #### GET USEFUL VARS ###################
 ########################################
 
@@ -59,7 +57,7 @@ this_fire_dat_w_ERC_wind_speed[which(this_fire_dat_w_ERC_wind_speed$ERC > 100), 
 # and G=5000+ acres
 
 this_fire_dat_w_ERC_wind_speed$num_ignitions <- (# this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_A +
-  this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_B +
+  # this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_B +
     this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_C +
     this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_D +
     this_fire_dat_w_ERC_wind_speed$FIRE_SIZE_CLASS_E +

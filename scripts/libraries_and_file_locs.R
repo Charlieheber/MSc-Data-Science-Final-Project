@@ -18,7 +18,16 @@
 # install.packages("ggthemes")
 # install.packages("corrplot")
 # install.packages("caret")
-#  install.packages("sp")
+# install.packages("sp")
+# install.packages("mapproj")
+# install.packages("ggridges")
+# install.packages("neuralnet")
+# install.packages("remotes")
+# install.packages("devtools")
+# remotes::install_github("cran/DMwR")
+# install.packages("MASS")
+# install.packages("EnvStats")
+# install.packages("poweRlaw")
 
 ### LIBRARIES ###############
 #############################
@@ -51,7 +60,7 @@ if("spatial" %in% req_packages){
   library(rgeos)
   library(maptools)
   library(geosphere)
-  
+  library(mapproj)
 }
 
 if("statistical" %in% req_packages){
@@ -61,6 +70,11 @@ if("statistical" %in% req_packages){
   library(forecast)
   library(Metrics)
   library(caret)
+  library(neuralnet)
+  library(MASS)
+  library(poweRlaw)
+  library(EnvStats)
+  
 }
 
 if("visualisation" %in% req_packages){
@@ -72,6 +86,8 @@ if("visualisation" %in% req_packages){
   library(cowplot)  # for plot_grid fxn
   library(ggthemes)  # install this package for additional ggplot themes
   library(corrplot)
+  library(ggridges)
+  
 }
 
 
