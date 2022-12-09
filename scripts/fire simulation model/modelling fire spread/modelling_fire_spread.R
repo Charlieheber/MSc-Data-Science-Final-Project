@@ -77,7 +77,7 @@ find_nearest_neighbours <- function(grid, grid_cell){
   # grid_cell = this_grid_shp[this_grid_shp$locnum == 36,]
   
   grid_NNs <- grid[(grid$rowNum %in% c(grid_cell$rowNum-1, grid_cell$rowNum, grid_cell$rowNum+1) &
-                              grid$colNum %in% c(grid_cell$colNum-1, grid_cell$colNum, grid_cell$colNum+1)), ]
+                      grid$colNum %in% c(grid_cell$colNum-1, grid_cell$colNum, grid_cell$colNum+1)), ]
   
   grid_NNs <- grid_NNs %>%
     mutate(
@@ -244,7 +244,7 @@ for (i in 1:length(this_grid_sim_snapshots)){
   this_grid_shp@data$on_fire <- this_grid_shp@data$locnum %in% this_grid_sim_snapshots[[i]]$locnum
   shp_df <- broom::tidy(this_grid_shp, region = "on_fire")
   fire_map_list[[i]] <- ggplot() + geom_polygon(data = shp_df, aes(x = long, y = lat, group = group), colour = "black", fill = NA)
-
+  
 }
 
 plot_grid(plotlist = fire_map_list)

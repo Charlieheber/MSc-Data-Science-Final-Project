@@ -137,10 +137,10 @@ leaflet(CONUS_fuel_models_longlat_agg_shp[CONUS_fuel_models_longlat_agg_shp$in_s
   addProviderTiles("Stamen.TonerLabels") %>%
   addPolygons(fillOpacity=1, opacity=1,
               fillColor=~LC22_pal(LC22_F13_220), color="black")
-  # addLegend(
-  #   "bottomleft", colors=fire_size_col, labels=fire_size_labels, title=fire_size_title, 
-  #   opacity=1
-  # )
+# addLegend(
+#   "bottomleft", colors=fire_size_col, labels=fire_size_labels, title=fire_size_title, 
+#   opacity=1
+# )
 
 ### SAVE RESULT #################################################
 #################################################################

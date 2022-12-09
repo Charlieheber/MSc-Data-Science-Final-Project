@@ -178,5 +178,3 @@ this_agg_fire_size_dat_dist_fit <- this_fire_size_dat_dist_w_pred %>%
 
 write.csv(this_fire_size_dat_dist, paste0(output_file_loc, "/wildfire simulation model/fire_sizes_all_years_by_landtype.csv"), row.names=FALSE)
 write.csv(this_agg_fire_size_dat_dist_fit, paste0(output_file_loc, "/wildfire simulation model/agg_fire_sizes_all_years_by_landtype.csv"), row.names=FALSE)
-
-saveRDS()

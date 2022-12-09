@@ -28,6 +28,7 @@
 # install.packages("MASS")
 # install.packages("EnvStats")
 # install.packages("poweRlaw")
+# remotes::install_github("cran/Rothermel")
 
 ### LIBRARIES ###############
 #############################
@@ -90,6 +91,12 @@ if("visualisation" %in% req_packages){
   
 }
 
+if("fire modelling" %in% req_packages){
+  
+  message("loading fire modelling packages")
+  library("Rothermel")
+  library("ftsa")
+}
 
 ### FILE LOCS #################
 ##############################
