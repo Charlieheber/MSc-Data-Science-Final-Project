@@ -44,7 +44,6 @@ this_n_sim_years = 100
 this_lambda = 1.225 # from pois_num_fires_per_day_model_fns.R
 sq_km_to_acres = 247.105
 
-
 #### RUN MODEL ########################
 #######################################
 

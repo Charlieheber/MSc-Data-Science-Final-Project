@@ -29,6 +29,7 @@
 # install.packages("EnvStats")
 # install.packages("poweRlaw")
 # remotes::install_github("cran/Rothermel")
+# install.packages("firebehavioR")
 
 ### LIBRARIES ###############
 #############################
@@ -95,8 +96,10 @@ if("fire modelling" %in% req_packages){
   
   message("loading fire modelling packages")
   library("Rothermel")
+  library("firebehavioR")
   library("ftsa")
 }
+
 
 ### FILE LOCS #################
 ##############################
