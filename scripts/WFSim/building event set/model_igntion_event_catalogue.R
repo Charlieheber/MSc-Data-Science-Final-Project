@@ -1,6 +1,18 @@
 rm(list=ls())
 library(here)
 
+#### MODEL PARAMS ######################
+########################################
+
+# USER 
+this_n_sim_years = 100
+n_runs = 10
+
+#  DO NOT CHANGE
+this_study_area_radius <- 100 # km
+this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
+sq_km_to_acres = 247.105
+
 ##### LOAD PACKAGES ######################
 ##########################################
 
@@ -38,16 +50,6 @@ this_LANDFIRE_shp <- readOGR(paste0(input_file_loc, "/shp/"),
 # LANDFIRE key
 landtype_key <- fread(paste0(input_file_loc, "/LANDFIRE/LF2022_FBFM13_220_CONUS/CSV_Data/LF20_F13_220.csv"))
 landtype_key$Value <- as.character(landtype_key$Value)
-
-#### MODEL PARAMS ######################
-########################################
-
-this_study_area_radius <- 100 # km
-this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
-
-this_n_sim_years = 100
-sq_km_to_acres = 247.105
-n_runs = 10
 
 #### RUN MODEL ########################
 #######################################

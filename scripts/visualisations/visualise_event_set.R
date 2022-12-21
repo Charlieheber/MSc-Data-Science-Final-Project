@@ -26,6 +26,7 @@ this_YLT$nonEP <- 1-this_YLT$EP
 
 # HISTORICAL FIRES TO COMPARE WITH 
 this_fire_dat <- fread(paste0(input_file_loc, "/wildfire simulation model/historical fire data/kettleman_hils_2000_2015_100_km_fires.csv"))
+calfire_comp <- fread(paste0(input_file_loc, "/EVENTSET/CalFire_comp.csv"))
 
 ##### COMPARE AREA BURNED/NUM FIRES ####
 ########################################
@@ -38,13 +39,14 @@ this_fire_dat %>%
     "num fires" = n()
   )
 
-EVENTSET %>%
+area_burned_by_year <- EVENTSET %>%
   group_by(sim_year) %>%
   summarise(
     "area burned" = sum(FIRE_SIZE),
     "ave fire size" = mean(FIRE_SIZE),
     "num fires" = n()
   )
+area_burned_by_year_unordered <- area_burned_by_year
 area_burned_by_year[order(area_burned_by_year$`area burned`),] 
 
 ##### BOX AND WHISKER ##################
@@ -69,7 +71,8 @@ ggplot(fire_res_compare, aes(x=log(FIRE_SIZE), color=source)) +
   geom_density()
 
 ggplot(fire_res_compare, aes(x=source, y=log(FIRE_SIZE), color=source)) +
-  geom_boxplot(coef=10)
+  geom_boxplot(coef=5, size = 2) + ylab("log(fire size (acres))")+
+  theme(text =element_text(size=34))
 
 
 #### MODEL PARAMS ######################
@@ -84,21 +87,43 @@ sq_km_to_acres = 247.105
 #################################################
 
 # NUM FIRES PER DAY
-res_num_fires_by_day <- this_EVENTSET %>%
+res_num_fires_by_day <- EVENTSET %>%
   group_by(DOY) %>%
   summarise(
     num_fires = n()
   )
 
 ggplot(res_num_fires_by_day, aes(x=DOY, y=num_fires)) +
-  geom_bar(stat="identity", position="dodge")+
+  geom_density(stat="identity", position="dodge")+
   theme_minimal()
+
+# CALFIRE COMPARISON ##############################
+###################################################
+
+EVENTSET_calfire_comp <- area_burned_by_year_unordered[1:100,]
+EVENTSET_calfire_comp$study_area <- pi*(100)^(2)*247.105
+EVENTSET_calfire_comp$area_burned_per_acre <- EVENTSET_calfire_comp$`area burned`/EVENTSET_calfire_comp$study_area
+
+res <- EVENTSET_calfire_comp[,c("sim_year", "area_burned_per_acre")]
+names(res) <- c("YEAR", "area_burned_per_acre")
+
+res$dist = "simulated"
+calfire_comp$dist <- "CALFIRE 1992-2018"
+
+res_2 <- rbind(res, calfire_comp[,c("YEAR", "area_burned_per_acre", "dist")])
+calfire_comp
+
+
+res_2$id <- 1:length(res_2$YEAR)
+ggplot(res_2, aes(id, area_burned_per_acre, fill = dist)) +     # Using default colors
+  geom_bar(stat = "identity")+ ylab("area burned per acre land")+
+  theme(text =element_text(size=20))
 
 
 # EP CURVES #######################################
 ###################################################
 # AREA BURNED BY YEAR
-res_area_burned_by_year <- this_EVENTSET %>%
+res_area_burned_by_year <- EVENTSET %>%
   group_by(sim_year) %>%
   summarise(
     tot_area_burned_acres = sum(FIRE_SIZE)
@@ -112,7 +137,7 @@ res_area_burned_by_year$nonEP <- 1-res_area_burned_by_year$EP
 ggplot(res_area_burned_by_year, aes(x=log10(tot_area_burned_acres), y=EP)) +
   ylim(c(0,0.1)) +
   geom_line(size=1) +
-  theme_minimal()+xlab("Total area burned yearly by fires (acres)")+ylab("Exceedance Probability")
+  theme_minimal()+xlab("log10(Area per yr (acres))")+ylab("Exceedance Probability")
 
 # SIMULATED LOSSES
 this_YLT <- this_YLT[order(this_YLT$GU_loss),]
@@ -120,8 +145,8 @@ this_YLT$RP <- 1:999
 this_YLT$EP <- 1/this_YLT$RP
 this_YLT$nonEP <- 1-this_YLT$EP
 
-ggplot(this_YLT, aes(x=GU_loss, y=EP)) +
-  ylim(c(0,0.1)) +
+ggplot(this_YLT, aes(x=GU_loss, y=log(EP)) ) +
+  # ylim(c(0,0.1)) +
   geom_line(size=1) +
   theme_minimal()+xlab("Total simulated yearly loss")+ylab("Exceedance Probability")
 
@@ -151,4 +176,4 @@ map_spherical_fires_by_year <- function(res_fires_df, sim_year){
   
   
 }
-map_spherical_fires_by_year(this_EVENTSET, 2)
+map_spherical_fires_by_year(EVENTSET, 2)

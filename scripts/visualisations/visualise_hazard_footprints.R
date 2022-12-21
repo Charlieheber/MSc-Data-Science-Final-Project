@@ -20,24 +20,13 @@ this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
 #########################################
 
 run <- 1:10
-HAZARD_FOOTPRINTS_name <- paste0("EVENT_SET_1000_yrs_SEED_123_run_", run,"_HAZARD_FOOTPRINTS")
-EVENTSET_name <- paste0("EVENT_SET_1000_yrs_SEED_123_run_", run)
+HAZARD_FOOTPRINTS_name <- paste0("EVENT_SET_1000_yrs_SEED_123_HAZARD_FOOTPRINTS")
+EVENTSET_name <- paste0("EVENT_SET_1000_yrs_SEED_123")
 
 # EVENTSET
-this_EVENTSET_lst <- lapply(EVENTSET_name,
-                            function(x){
-                              res <-fread(paste0(input_file_loc, "/EVENTSET/", x, ".csv"))
-                              return(res[which(res$FIRE_SIZE > grid_sq_size_km_sq/acres_to_km_sq),])
-                            } 
-  
-)
+this_EVENTSET<- res <-fread(paste0(input_file_loc, "/EVENTSET/", EVENTSET_name, ".csv"))
 # HAZARD FOOTPRINT
-this_HAZARD_FOOTPRINTS_lst <- lapply(HAZARD_FOOTPRINTS_name,
-                                     function(x) fread(paste0(input_file_loc, "/EVENTSET/hazard footprints/", x,  ".csv"))
-)
-
-this_EVENTSET <- rbindlist(this_EVENTSET_lst)
-this_HAZARD_FOOTPRINTS <- rbindlist(this_HAZARD_FOOTPRINTS_lst)
+this_HAZARD_FOOTPRINTS <- fread(paste0(input_file_loc, "/EVENTSET/hazard footprints/", HAZARD_FOOTPRINTS_name,  ".csv"))
 
 #  LANDFIRE SHP
 LANDFIRE_shp_name <- "fuel_models_longlat_100agg_in_study_area_10km_buffer_shp_PREP_4_fire_spread_model"
@@ -53,8 +42,6 @@ this_LANDFIRE_shp <- sp::merge(this_LANDFIRE_shp, landtype_key[, c("FBFM13", "ty
 
 # join fuel type data
 this_HAZARD_FOOTPRINTS <- left_join(this_HAZARD_FOOTPRINTS, this_LANDFIRE_shp@data[,c("locnum", "FBFM13")], by="locnum")
-
-
 
 ##### VISUALISE BURN SIMULATION #########
 #########################################

@@ -115,7 +115,15 @@ message("getting file locs")
 input_file_loc <- paste0(here::here(), "/data/input") 
 output_file_loc <- paste0(here::here(), "/data/output") 
 
+#### GET CITATIONS ##########
+#############################
 
+# citation()
+# citation(package = "Rothermel")
+# citation(package = "firebehavioR")
+# citation(package = "forecast")
+# citation(package = "stats")
+# citation(package = "naivebayes")
 
 
 
