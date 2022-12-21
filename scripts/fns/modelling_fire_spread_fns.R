@@ -75,7 +75,11 @@ run_burn_simulation <- function(grid, fire_ignition_cell, fire_size_grid_sqs){
   # grid <- this_LANDFIRE_mod_shp@data
   # fire_ignition_cell <- this_LANDFIRE_EVENT$locnum
   # fire_size_grid_sqs <- this_EVENT$FIRE_SIZE_grid_sq
-  # grid <- this_grid 
+  
+  # grid <- this_LANDFIRE_mod_shp@data
+  # fire_ignition_cell <- this_LANDFIRE_EVENT$locnum
+  # fire_size_grid_sqs <- this_EVENT$FIRE_SIZE_grid_sq
+  # grid <- this_grid
   # fire_igntion_cell <- 44
   
   # add res columns

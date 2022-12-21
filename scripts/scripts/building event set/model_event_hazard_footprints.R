@@ -83,9 +83,9 @@ set.seed(seed)
 
 # EVENTSET
 EVENTSET_cols <- c("EVENTID", "ERC", "lon", "lat", "lon_LANDFIRE", "lat_LANDFIRE", "FBFM13", "FIRE_SIZE")
-EVENTSET_name <- "EVENT_SET_100_yrs_SEED_123"
-this_EVENTSET <- fread(paste0(input_file_loc, "/EVENTSET/", EVENTSET_name, ".csv"))
+EVENTSET_name <- "EVENT_SET_1000_yrs_SEED_123"
 
+this_EVENTSET <- fread(paste0(input_file_loc, "/EVENTSET/", EVENTSET_name, ".csv"))
 this_EVENTSET <- this_EVENTSET[,..EVENTSET_cols]
 
 # LAND TYPE
@@ -117,30 +117,27 @@ this_water_ROS <- 0.01
 this_barren_ROS <- 1.2
 this_no_data_ROS <- 1.2
 
-#### GET PROXY FUEL MOISTURE VALUES FOR EACH IGNITION #####
-###########################################################
-
-this_proxy_fuel_moistures <- rbindlist(
-  apply(this_EVENTSET, 
-        1,
-        function(x) get_proxy_fuel_moisture_from_historical_record(as.numeric(x["ERC"]), MC_daily))
-)
-
-this_EVENTSET <- cbind(this_EVENTSET, this_proxy_fuel_moistures[,c("MC_1hr", "MC_10hr", "MC_100hr",
-                                                                   "MC_herb", "MC_wood")])
-this_proxy_fuel_moistures <- NULL
-
 #### RUN MODEL ###############################################
 ##############################################################
 
 this_EVENTSET_model_spread <- this_EVENTSET[which(this_EVENTSET$FIRE_SIZE > grid_sq_size_km_sq/acres_to_km_sq),]
 
+#### GET PROXY FUEL MOISTURE VALUES FOR EACH IGNITION #####
+###########################################################
+
+this_proxy_fuel_moistures <- rbindlist(
+  apply(this_EVENTSET_model_spread, 
+        1,
+        function(x) get_proxy_fuel_moisture_from_historical_record(as.numeric(x["ERC"]), MC_daily))
+)
+
+this_EVENTSET_model_spread <- cbind(this_EVENTSET_model_spread, this_proxy_fuel_moistures[,c("MC_1hr", "MC_10hr", "MC_100hr",
+                                                                                             "MC_herb", "MC_wood")])
+this_proxy_fuel_moistures <- NULL
+
 num_events <- length(this_EVENTSET_model_spread$EVENTID)
 this_grid_res_sim_lst <- list()
 for(i in 1:num_events){
-  
-  #### GET FIRE SPREAD RATES #################################
-  ############################################################
   
   this_EVENT <- this_EVENTSET_model_spread[i,]
   this_EVENT$FIRE_SIZE_grid_sq <- round(this_EVENT$FIRE_SIZE*acres_to_km_sq/grid_sq_size_km_sq)
@@ -214,8 +211,11 @@ this_grid_sim_res <- rbindlist(this_grid_res_sim_lst)
 ####################################################
 
 write.csv(this_grid_sim_res, 
-          paste0(output_file_loc, "/", EVENTSET_name,  "_HAZARD_FOOTPRINTS.csv"),
+          paste0(output_file_loc, "/", EVENTSET_name, "_HAZARD_FOOTPRINTS.csv"),
           row.names=FALSE)
+
+
+
 
 
 

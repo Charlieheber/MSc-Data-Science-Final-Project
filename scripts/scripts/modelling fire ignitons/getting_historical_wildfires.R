@@ -45,12 +45,31 @@ this_station_dat <- fread(paste0(input_file_loc, "/wildfire simulation model/sta
 this_rough_fire_dat$dist_from_study_area_km <- geosphere::distHaversine(this_study_area_lon_lat, this_rough_fire_dat[,c("LONGITUDE", "LATITUDE")])/1000
 this_fire_dat <- this_rough_fire_dat[this_rough_fire_dat$dist_from_study_area_km <= this_study_area_radius_km,]
 
-# DENSITY PLOT
-min(this_rough_fire_size_dat$FIRE_SIZE)
-max(this_rough_fire_size_dat$FIRE_SIZE)
-ggplot(this_rough_fire_size_dat[this_rough_fire_size_dat$FIRE_SIZE > 0,], 
-       aes(x=log(FIRE_SIZE))) + geom_density() + xlim(-3,4)
+### HOW MUCH ACREAGE BURNED BY A+B FIRES PER YEAR?
+this_fire_dat[this_fire_dat$FIRE_SIZE_CLASS %in% c("A","B"),] %>%
+  group_by(FIRE_YEAR) %>%
+  summarise(
+    "total burned" = sum(FIRE_SIZE)
+  )
+sum(this_fire_dat[this_fire_dat$FIRE_SIZE_CLASS %in% c("A","B"),]$FIRE_SIZE)/15  
 
+# DENSITY PLOT
+min(this_fire_dat$FIRE_SIZE)
+max(this_fire_dat$FIRE_SIZE)
+
+ggplot(this_fire_dat[this_fire_dat$FIRE_SIZE > 10,], 
+       aes(x=FIRE_SIZE)) + geom_density() +
+  xlab("Fire Area Burned (acres)") + 
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.key.size = unit(1.5, "cm"),
+        legend.title = element_blank(),
+        text =element_text(size=30)) +
+  scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x),
+                labels = trans_format("log10", math_format(10^.x)))
+
+ggsave("fire_area_burned.png")
 
 ### ONLY KEEP FIRES FROM CLASS C ONWARDS #####
 ##############################################
@@ -122,8 +141,8 @@ this_fire_dat_fire_disc_doy_count <- this_fire_dat %>%
   summarise(n = n())
 
 ggplot(data=this_fire_dat_fire_disc_month_count, aes(x=DISC_MONTH, y=n)) +
-  geom_bar(stat="identity", fill="steelblue")+
-  theme_minimal()
+  geom_bar(stat="identity")+
+  theme_minimal() + xlab("DISCOVERY MONTH") + ylab("n")
 
 ggplot(data=this_fire_dat_fire_disc_doy_count, aes(x=DISCOVERY_DOY, y=n)) +
   geom_bar(stat="identity", fill="steelblue")+
@@ -150,6 +169,10 @@ ggplot(data=this_fire_dat_fire_disc_date_count,
 ### MAP FIRES ###############################
 #############################################
 
+this_study_area_radius <- 100 # km
+this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
+
+
 # A=0-0.25 acres, 
 # B=0.26-9.9 acres, 
 # C=10.0-99.9 acres, 
@@ -169,14 +192,26 @@ fire_size_pal <- colorFactor(
 )
 
 leaflet(this_fire_dat) %>%
-  addProviderTiles("Esri.WorldImagery") %>%
-  addProviderTiles("Stamen.TonerLabels") %>%
-  addCircleMarkers(lng=~LONGITUDE, lat=~LATITUDE, radius=4, weight=2, fillOpacity=1, opacity=1,
+  addTiles(group="map") %>%
+  addProviderTiles("Esri.WorldImagery", group="satellite") %>%
+  addProviderTiles("Stamen.TonerLabels", group="satellite") %>%
+  addCircleMarkers(lng=~LONGITUDE, lat=~LATITUDE, radius=8, weight=2, fillOpacity=1, opacity=1,
                    fillColor=~fire_size_pal(FIRE_SIZE_CLASS), color="black") %>%
   addLegend(
     "bottomleft", colors=fire_size_col, labels=fire_size_labels, title=fire_size_title, 
     opacity=1
+  ) %>%
+  addCircles(lng=this_centroid_study_area[1], lat=this_centroid_study_area[2],
+             radius=this_study_area_radius*1000, color="blue", opacity = 1, fillOpacity=0,
+             group = "study area") %>%
+  addLegend(
+    colors = "blue", title = "Study Area", labels = "study area",
+    opacity = 1, position="bottomleft"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("map", "satellite"), overlayGroups = c("study area", "land type")
   )
+
 
 
 ### GET FIRE IGNITION DAYS ####################

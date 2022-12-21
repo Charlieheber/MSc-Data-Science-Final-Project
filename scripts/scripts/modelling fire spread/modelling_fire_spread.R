@@ -10,8 +10,8 @@ source(paste0(script_loc, "libraries_and_file_locs.R"))
 
 #### BUILD GRID SHAPEFILE ################
 ##########################################
-this_n_cols <- 8
-this_n_rows <- 10
+this_n_cols <- 24
+this_n_rows <- 24
 this_lat_extent <- c(-122, -117)
 this_lon_extent <- c(34, 38)
 
@@ -41,35 +41,6 @@ create_grid_shp <- function(n_cols, n_rows, lat_extent, lon_extent){
   return(grid_shp)
   
 }
-
-this_grid_shp <- create_grid_shp(this_n_cols, this_n_rows, this_lat_extent, this_lon_extent)
-
-##### VISUALISE ###########################
-###########################################
-head(this_grid_shp@data)
-class(this_grid_shp)   
-plot(this_grid_shp) 
-
-
-leaflet(this_grid_shp) %>%
-  addPolygons() %>%
-  addLabelOnlyMarkers(data=this_grid_shp@data, 
-                      lng=~lon, lat=~lat, 
-                      label=~locnum, 
-                      labelOptions = labelOptions(noHide = T, direction = 'top', textOnly = T,
-                                                  offset = c(0, 5)))
-
-
-#### ADD SOME RANDOM BURN DELAYS ########
-#### FOR EACH GRID SQUARE ###############
-
-# this_grid_shp$fire_spread_rate <- round(runif(dim(this_grid_shp)[1], 0, 100))
-this_grid_shp$fire_spread_rate <- 1
-this_grid_shp$grid_length <- 10
-
-head(this_grid_shp@data)
-#### BUILD FUNCTION FOR FINDING NEAREST #
-#### NEIGHBOURS #########################
 
 find_nearest_neighbours <- function(grid, grid_cell){
   
@@ -143,7 +114,6 @@ get_burn_delay <- function(grid_cell_NNs, current_burn_time){
   return(grid_cell_NNs)
   
 }
-
 run_burn_simulation <- function(grid, fire_igntion_cell){
   
   # grid <- this_grid 
@@ -217,12 +187,147 @@ run_burn_simulation <- function(grid, fire_igntion_cell){
   
 }
 
+
+this_grid_shp <- create_grid_shp(this_n_cols, this_n_rows, this_lat_extent, this_lon_extent)
+
+##### VISUALISE ###########################
+###########################################
+head(this_grid_shp@data)
+class(this_grid_shp)   
+plot(this_grid_shp) 
+
+
+leaflet(this_grid_shp) %>%
+  addPolygons() %>%
+  addLabelOnlyMarkers(data=this_grid_shp@data, 
+                      lng=~lon, lat=~lat, 
+                      label=~locnum, 
+                      labelOptions = labelOptions(noHide = T, direction = 'top', textOnly = T,
+                                                  offset = c(0, 5)))
+
+
+#### ADD SOME RANDOM BURN DELAYS ########
+#### FOR EACH GRID SQUARE ###############
+
+this_grid_shp$grid_length <- 10
+this_fire_igntion_cell <- 220
+
+#### BUILD FUNCTION FOR FINDING NEAREST #
+#### NEIGHBOURS #########################
+
 # where does fire start?
-this_fire_igntion_cell <- 18
-this_grid <- this_grid_shp@data
+this_grid_1 <- this_grid_shp@data
+this_grid_shp_1 <- this_grid_shp
+
+this_grid_2 <- this_grid_shp@data
+this_grid_shp_2 <- this_grid_shp
+
+this_grid_2.2 <- this_grid_shp@data
+this_grid_shp_2.2 <- this_grid_shp
+
+this_grid_3 <- this_grid_shp@data
+this_grid_shp_3 <- this_grid_shp
+
+# SCENARIO 1 - UNIFORM SPREAD RATE
+this_grid_1$fire_spread_rate <- 1 # uniform spread rate
+this_grid_1$fuel_type <- "fueltype_1" # uniform spread rate
+this_grid_shp_1@data <- this_grid_1
+
+# SCENARIO 2 - LOW ROS TO HIGH ROS
+this_grid_2$fire_spread_rate <- 1
+this_grid_2$fuel_type <- "fueltype_1"
+
+this_grid_2[this_grid_2$colNum > 11,]$fire_spread_rate <- 4
+this_grid_2[this_grid_2$colNum > 11,]$fuel_type <- "fueltype_2"
+
+this_grid_shp_2@data <- this_grid_2
+
+# SCENARIO 2.2 - HIGH ROS TO LOW ROS
+this_grid_2.2$fire_spread_rate <- 4
+this_grid_2.2$fuel_type <- "fueltype_2"
+
+this_grid_2.2[this_grid_2$colNum > 11,]$fire_spread_rate <- 1
+this_grid_2.2[this_grid_2$colNum > 11,]$fuel_type <- "fueltype_1"
+
+this_grid_shp_2.2@data <- this_grid_2.2
+
+# SCENARIO 3 - URBAN CENTRE
+this_grid_3$fire_spread_rate <- 1
+this_grid_3$fuel_type <- "fueltype_1"
+
+this_grid_3[which(this_grid_3$colNum %in% 10:15 &
+                    this_grid_3$rowNum %in% 10:15 | 
+                    this_grid_3$locnum %in% c(203:206, 256, 280, 304, 328, 371:374, 249, 273, 297, 321)),]$fire_spread_rate <- 0.1
+
+this_grid_3[which(this_grid_3$colNum %in% 10:15 &
+                    this_grid_3$rowNum %in% 10:15 | 
+                    this_grid_3$locnum %in% c(203:206, 256, 280, 304, 328, 371:374, 249, 273, 297, 321)),]$fuel_type <- "urban"
+
+this_grid_shp_3@data <- this_grid_3
+
+# VISUALISE
+col_pal <- colorFactor(
+  c("lightgreen", "darkgreen", "grey"), domain=c("fueltype_1", "fueltype_2", "urban"), ordered=TRUE
+)
+
+leaflet() %>%
+  addPolygons(data=this_grid_shp_1, fillColor = ~col_pal(fuel_type), fillOpacity = 1, color="grey", group="1") %>%
+  addPolygons(data=this_grid_shp_2, fillColor = ~col_pal(fuel_type), fillOpacity = 1, color="grey", group="2") %>%
+  addPolygons(data=this_grid_shp_2.2, fillColor = ~col_pal(fuel_type), fillOpacity = 1, color="grey", group="2.2") %>%
+  addPolygons(data=this_grid_shp_3, fillColor = ~col_pal(fuel_type), fillOpacity = 1, color="grey", group="3", label=~locnum) %>%
+  addLayersControl(overlayGroups = c("1", "2", "2.2", "3"))
 
 
-this_grid_sim <- run_burn_simulation(this_grid, this_fire_igntion_cell)
+#### RUN BURN SIMULATIONS ###############
+#########################################
+
+this_grid_sim_1 <- run_burn_simulation(this_grid_1, 276)
+this_grid_sim_2 <- run_burn_simulation(this_grid_2, this_fire_igntion_cell)
+this_grid_sim_2.2 <- run_burn_simulation(this_grid_2.2, this_fire_igntion_cell)
+this_grid_sim_3 <- run_burn_simulation(this_grid_3, this_fire_igntion_cell)
+
+### VISUALISE ###########################
+#########################################
+
+this_grid_sim_shp <- this_grid_shp
+
+this_grid_1_snapshots <- stats::quantile(this_grid_sim_1$burn_delay,probs=seq(0,1, by=1/6))
+this_grid_2_snapshots <- stats::quantile(this_grid_sim_2$burn_delay,probs=seq(0,1, by=1/6))
+this_grid_2.2_snapshots <- stats::quantile(this_grid_sim_2.2$burn_delay,probs=seq(0,1, by=1/6))
+this_grid_3_snapshots <- stats::quantile(this_grid_sim_3$burn_delay,probs=seq(0,1, by=1/6))
+
+max(this_grid_sim_shp$burn_delay)
+
+this_grid_sim_shp@data <- this_grid_sim_3
+this_grid_snapshots <- this_grid_3_snapshots
+leaflet(this_grid_sim_shp) %>%
+  addPolygons(fillColor = ~col_pal(fuel_type), fillOpacity = 1, color="grey", group="1") %>%
+  addPolygons(data=this_grid_sim_shp[which(this_grid_sim_shp$burning & this_grid_sim_shp$burn_delay < this_grid_snapshots[2]/2),],
+              fillOpacity=0.8, opacity=0,
+              fillColor="red", color="black",
+              group = "fire_0") %>%
+  addPolygons(data=this_grid_sim_shp[which(this_grid_sim_shp$burning & this_grid_sim_shp$burn_delay < this_grid_snapshots[3]),],
+              fillOpacity=0.8, opacity=0,
+              fillColor="red", color="black",
+              group = "fire_1") %>%
+  addPolygons(data=this_grid_sim_shp[which(this_grid_sim_shp$burning & this_grid_sim_shp$burn_delay < this_grid_snapshots[4]),],
+              fillOpacity=0.8, opacity=0,
+              fillColor="red", color="black",
+              group = "fire_2") %>%
+  addPolygons(data=this_grid_sim_shp[which(this_grid_sim_shp$burning & this_grid_sim_shp$burn_delay < this_grid_snapshots[5]),],
+              fillOpacity=0.8, opacity=0,
+              fillColor="red", color="black",
+              group = "fire_3") %>%
+  addPolygons(data=this_grid_sim_shp[which(this_grid_sim_shp$burning & this_grid_sim_shp$burn_delay < this_grid_snapshots[6]),],
+              fillOpacity=0.8, opacity=0,
+              fillColor="red", color="black",
+              group = "fire_4") %>%
+  addPolygons(data=this_grid_sim_shp[which(this_grid_sim_shp$burning & this_grid_sim_shp$burn_delay < this_grid_snapshots[7]),],
+              fillOpacity=0.8, opacity=0,
+              fillColor="red", color="black",
+              group = "fire_5") %>%
+  addLayersControl(overlayGroups = c("fire_0", "fire_1", "fire_2", "fire_3", "fire_4", "fire_5", "fire_6"))
+
 
 ##### VISUALISE BURN SIMULATION #########
 #########################################
@@ -243,8 +348,44 @@ for (i in 1:length(this_grid_sim_snapshots)){
   print(i)
   this_grid_shp@data$on_fire <- this_grid_shp@data$locnum %in% this_grid_sim_snapshots[[i]]$locnum
   shp_df <- broom::tidy(this_grid_shp, region = "on_fire")
-  fire_map_list[[i]] <- ggplot() + geom_polygon(data = shp_df, aes(x = long, y = lat, group = group), colour = "black", fill = NA)
+  fire_map_list[[i]] <- ggplot() + geom_polygon(data = shp_df, aes(x = long, y = lat, group = group, color=group), colour = "black", fill = NA)
   
 }
 
 plot_grid(plotlist = fire_map_list)
+
+
+
+this_grid_snapshots <- stats::quantile(this_grid_sim$burn_delay,probs=seq(0,1, by=1/6))
+
+this_LANDFIRE_shp_fuel_map <- sp::merge(this_LANDFIRE_shp, this_grid_sim[, c("locnum", "burning", "burn_delay")], by="locnum")
+
+# fuel type key
+colours <- c("grass" = "forestgreen", 
+             "shrub" = "darksalmon",
+             "timber_litter" = "burlywood4",
+             "slash" = "purple",
+             "urban" = "grey",
+             "snow" = "white",
+             "agriculture" = "darkgoldenrod1",
+             "water" = "blue",
+             "barren" = "darkorange4")
+
+fuel_pal <- colorFactor(
+  palette = colours,
+  domain = names(colours),
+  ordered = TRUE
+)
+
+this_LANDFIRE_shp_fuel_map@data
+
+
+
+
+
+
+
+
+
+
+

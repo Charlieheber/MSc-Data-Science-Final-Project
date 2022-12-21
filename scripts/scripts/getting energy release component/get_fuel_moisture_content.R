@@ -32,8 +32,9 @@ this_station_data <- this_station_data_all_cols[,..useful_cols]
 
 # convert all integer to double
 this_station_data <- this_station_data %>% mutate_at(measured_vars, as.numeric)
-
 sapply(this_station_data, class)
+
+apply(this_station_data, 2, function(x) sum(is.na(x)))
 
 # useful quantities ###############
 ###################################
@@ -65,9 +66,16 @@ this_station_data_month_ave_df <- rbindlist(this_station_data_month_ave_lst)
 
 ggplot(this_station_data_month_ave_df[this_station_data_month_ave_df$var %in% c("ave_air_temp", "ave_relative_humidity", "total_precipitation", "total_solar_radiation"),], 
        aes(x=factor(month, level=month.name), y=value, group=var)) +
-  geom_line(aes(color=var))+
-  geom_point(aes(color=var))
-# makes sense!
+  geom_line(aes(color=var), size=2)+
+  geom_point(aes(fill=var), color="black", pch=21, size=4)+
+  theme(axis.title = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_text(angle=90),
+        legend.key.size = unit(1.5, "cm"),
+        legend.title = element_blank())
+ggsave("station_vars_by_month.png")
+
 
 # deal with missing values ########
 ###################################
@@ -123,8 +131,8 @@ state_of_weather_count <- this_station_data %>% count(state_of_weather)
 state_of_weather_count <- state_of_weather_count %>% left_join(state_of_weather_key, by="state_of_weather")
 
 ggplot(state_of_weather_count) + geom_bar(aes(fill = weather, x="", y = n), stat="identity", width=1) +
-  coord_polar("y", start=0) +  theme_void()
-
+  coord_polar("y", start=0) +  theme_void() + theme(legend.key.size = unit(1.5, "cm"))  
+ 
 # get 1 hour dead fuel moisture content ###
 ###########################################
 
@@ -132,8 +140,12 @@ this_station_data$MC_1hr <- apply(this_station_data[, c("ave_relative_humidity",
                                   function(x) get_MC_1hr(x[1]/100, celsius_to_fahrenheit(x[2]), x[3], FALSE))
 
 # looks good
-ggplot(this_station_data, aes(x=day_of_year, y = MC_1hr)) + 
-  geom_point()
+plot_1hr <- ggplot(this_station_data, aes(x=day_of_year, y = MC_1hr)) + 
+  geom_point(size=1.2) + xlab("day of year") + ylab("MC 1hr")+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank()
+  )
 
 
 # get 10 hour dead fuel moisture content ##
@@ -143,8 +155,13 @@ this_station_data$MC_10hr <- apply(this_station_data[, c("ave_relative_humidity"
                                   function(x) get_MC_10hr(x[1]/100, celsius_to_fahrenheit(x[2]), x[3]))
 
 # looks good
-ggplot(this_station_data, aes(x=day_of_year, y = MC_10hr)) + 
-  geom_point()
+plot_10hr <- ggplot(this_station_data, aes(x=day_of_year, y = MC_10hr)) + 
+  geom_point() + xlab("day of year") + ylab("MC 10hr") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank()
+        )
+
 
 
 # get 100 hour dead fuel moisture content #
@@ -154,7 +171,8 @@ this_station_data$daylight_hours <- get_daylight_hours(this_station_data$latitud
 
 # looks good
 ggplot(this_station_data[this_station_data$year == 2001,]) + 
-  geom_bar(aes(x=day_of_year, y = daylight_hours), stat="identity", width=1)
+  geom_bar(aes(x=day_of_year, y = daylight_hours), stat="identity", width=1)+
+  xlab("day of year") + ylab("daylight hours")
 
 # get max/min daily moisture content
 this_station_data$EMC_min <- apply(this_station_data[, c("min_relative_humidity", "min_air_temp")], 1, function(x) get_EMC(x[1]/100, celsius_to_fahrenheit(x[2])))
@@ -191,8 +209,12 @@ for(i in 1:dim(this_station_data)[1]){
 this_station_data$MC_100hr <- MC_100hr
 
 # looks good!
-ggplot(this_station_data, aes(x=day_of_year, y = MC_100hr)) + 
-  geom_point()
+plot_100hr <- ggplot(this_station_data, aes(x=day_of_year, y = MC_100hr)) + 
+  geom_point()  + xlab("day of year") + ylab("MC 100hr")+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank()
+  )
 
 
 # get 1000 hour dead fuel moisture content #
@@ -238,8 +260,16 @@ this_MC_1000hr <- rbindlist(lapply(MC_1000hr_lst, function(x) data.table("id" = 
 this_station_data <- left_join(this_station_data, this_MC_1000hr[, c("id", "MC_1000hr")], by = "id")
 
 # looks good!
-ggplot(this_station_data, aes(x=day_of_year, y = MC_1000hr)) + 
-  geom_point()
+plot_1000hr <- ggplot(this_station_data, aes(x=day_of_year, y = MC_1000hr)) + 
+  geom_point() + xlab("day of year") + ylab("MC 1000hr")
+
+
+plot_grid(plot_1hr, plot_10hr,
+          ncol = 1)
+
+plot_grid(plot_100hr, plot_1000hr,
+          ncol = 1)
+
 
 # get herbaceous moisture content ##########
 ############################################
@@ -291,8 +321,8 @@ this_station_data <- left_join(this_station_data, this_MC_herb[, c("id", "MC_her
 
 # looks okay? takes time to stabilise - should look into starting value
 # weekly oscillation - doesn't make sense
-ggplot(this_station_data, aes(x=day_of_year, y = MC_herb, color=as.factor(year))) + 
-  geom_point()
+ggplot(this_station_data, aes(x=day_of_year, y = MC_herb)) + 
+  geom_point()  + xlab("day of year") + ylab("MC herb")
 
 # get live wood moisture content #########
 ##########################################
@@ -327,8 +357,8 @@ this_MC_wood <- rbindlist(lapply(this_MC_wood_lst, function(x) data.table("id" =
 
 this_station_data <- left_join(this_station_data, this_MC_wood[, c("id", "MC_wood")], by = "id")
 
-ggplot(this_station_data, aes(x=day_of_year, y = MC_wood, color=as.factor(year))) + 
-  geom_point()
+ggplot(this_station_data, aes(x=day_of_year, y = MC_wood)) + 
+  geom_point()   + xlab("day of year") + ylab("MC herb")
 
 # save results ###########################
 ##########################################

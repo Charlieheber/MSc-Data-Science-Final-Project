@@ -30,6 +30,8 @@
 # install.packages("poweRlaw")
 # remotes::install_github("cran/Rothermel")
 # install.packages("firebehavioR")
+# install.packages("naivebayes")
+# install.packages("igraph")
 
 ### LIBRARIES ###############
 #############################
@@ -76,12 +78,16 @@ if("statistical" %in% req_packages){
   library(MASS)
   library(poweRlaw)
   library(EnvStats)
+  library(naivebayes)
+  library(igraph)
+  
   
 }
 
 if("visualisation" %in% req_packages){
   
   message("loading visualisation packages")
+  theme_set(theme_bw(16))
   library(ggplot2)
   library(leaflet)
   library(RColorBrewer)
@@ -89,15 +95,16 @@ if("visualisation" %in% req_packages){
   library(ggthemes)  # install this package for additional ggplot themes
   library(corrplot)
   library(ggridges)
+  library(scales)
   
 }
 
 if("fire modelling" %in% req_packages){
   
   message("loading fire modelling packages")
-  library("Rothermel")
-  library("firebehavioR")
-  library("ftsa")
+  library(Rothermel)
+  library(firebehavioR)
+  library(ftsa)
 }
 
 

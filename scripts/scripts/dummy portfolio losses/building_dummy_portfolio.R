@@ -32,8 +32,8 @@ this_LANDFIRE_shp <- sp::merge(this_LANDFIRE_shp, landtype_key[, c("FBFM13", "ty
 #### PARAMS ############################
 ########################################
 
-n_properties = 100
-property_TIV_Mn = 1000000
+n_properties = 500
+property_TIV_Mn = rep(sample(c(20000, 100000, 1000000, 500000, 250000)),100)
 
 this_study_area_radius <- 100 # km
 this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
@@ -44,10 +44,10 @@ this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
 set.seed(123)
 
 # only want urban areas
-this_LANDFIRE_urban <- this_LANDFIRE_shp@data[this_LANDFIRE_shp@data$FBFM13=="Urban",]
+this_LANDFIRE_urban <- this_LANDFIRE_shp@data[this_LANDFIRE_shp@data$FBFM13=="Urban" | this_LANDFIRE_shp@data$FBFM13=="Agriculture",]
 
-# randomly pick grid squares for 100 locations
-prop_grid_sqs_locnums <-  data.frame("locnum"=sample(this_LANDFIRE_urban$locnum, 100, replace=TRUE))
+# randomly pick grid squares for 1000 locations
+prop_grid_sqs_locnums <-  data.frame("locnum"=sample(this_LANDFIRE_urban$locnum, n_properties, replace=TRUE))
 prop_grid_sqs <- left_join(prop_grid_sqs_locnums, this_LANDFIRE_urban[,c("locnum", "lon", "lat")], by="locnum")
 
 # jitter a bit
@@ -88,7 +88,7 @@ leaflet(this_LANDFIRE_shp) %>%
               label=~typical_fuel_complex) %>%
   addCircleMarkers(data=jittered_prop_grid_sqs,
                    lng=~lon, lat=~lat, color="black", fillColor="red",
-                   radius=5, opacity=1, fillOpacity=1, weight=2, stroke=TRUE) %>%
+                   radius=3, opacity=1, fillOpacity=1, weight=2, stroke=TRUE) %>%
   addCircles(lng=this_centroid_study_area[1], lat=this_centroid_study_area[2],
              radius=this_study_area_radius*1000, color="blue", opacity = 1, fillOpacity=0) %>%
   addLegend(
@@ -109,7 +109,7 @@ leaflet(this_LANDFIRE_shp) %>%
 ######################################
 
 write.csv(this_EDM[,c("locnum", "LOCID", "lon","lat", "TIV")],
-          paste0(output_file_loc, "/EDM_", n_properties, "properties_", property_TIV_Mn, "Mn_TIV.csv"),
+          paste0(output_file_loc, "/EDM_", n_properties, "properties_", sum(this_EDM$TIV)/1000000, "Mn_TIV.csv"),
           row.names=FALSE)
 
 

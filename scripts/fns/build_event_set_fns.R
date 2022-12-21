@@ -1,11 +1,31 @@
+
+get_emp_df_val <- function(ecdf, n){
+  
+  vals = knots(ecdf)
+  
+  x <- data.frame(
+    "vals" = vals,
+    "prob" = ecdf(vals) - c(0, ecdf(vals)[1:(length(vals)-1)])
+  )
+  
+  return(sample(x$vals, n, prob=x$prob))
+  
+}
+
 build_event_set <- function(n_sim_years, 
-                            pois_lambda, 
                             agg_fire_sizes, 
                             TSA_ERC_modl,
+                            windspeed_ecdf,
+                            wind_direction_ecdf,
+                            n_fires_ecdf,
                             LANDFIRE_shp,
                             fire_ignition_day_modl,
                             centroid_study_area,
-                            study_area_radius){
+                            study_area_radius,
+                            modelled_ERC = FALSE,
+                            ERC){
+  
+
   
   # SET UP RES DF
   res_df <- data.table(
@@ -21,28 +41,55 @@ build_event_set <- function(n_sim_years,
   for(i in 1:n_sim_years){
     
     if(i%%10==0) message(paste0("simulated year: ", i)) 
-    
     ERC_TBATS_pred <- append(ERC_TBATS_pred, simulate(TSA_ERC_modl, nsim = 365))
   }
   res_df$ERC <- ERC_TBATS_pred
-  
+    
+
+  # GENERATE DAILY WINDSPEED/DIRECTION 
+  message("Simulate wind speed and direction")
+  res_df$sim_windspeed <- apply(matrix(rep(1,length(res_df$sim_day))), 1, function(x) get_emp_df_val(windspeed_ecdf, x))
+  res_df$sim_wind_direction <- apply(matrix(rep(1,length(res_df$sim_day))), 1, function(x) get_emp_df_val(wind_direction_ecdf, x))
   
   # MODEL DAILY FIRE IGNITIONS 
-  message("Modelling probability of fire ignition")
-  res_df$P_daily_ignition <- predict(generate_fire_igntion_days, res_df[, c("ERC")], type="response")
+  message("Modelling probability of fire ignition w/ prediction interval")
+  res_df$P_daily_ignition <- stats::predict(generate_fire_igntion_days, res_df[, c("ERC")], type="response")
+
+  # GET 95% CONFIDENCE BOUNDS (PREDICTION INTERVAL)
+  logit_p <- stats::predict(generate_fire_igntion_days, res_df[, c("ERC")])
+  Bigma <- vcov(generate_fire_igntion_days)
+  sig=Vectorize(function(x) sqrt(Bigma[1,1] + x^2*Bigma[2,2] + 2*x*Bigma[1,2]))
   
-  res_df$fire_ignition_day <-  apply(res_df, 1, function(x) sample(c(FALSE,TRUE), 
-                                                                   size = 1, 
-                                                                   replace = TRUE, 
-                                                                   prob = c(1-x["P_daily_ignition"], x["P_daily_ignition"])))
+  theta_L = logit_p - 1.96*sig(res_df[, c("ERC")])
+  theta_U = logit_p + 1.96*sig(res_df[, c("ERC")])
+  p_L = plogis(theta_L)
+  p_U = plogis(theta_U)
+  
+  res_df$P_daily_ignition_Lower <- p_L
+  res_df$P_daily_ignition_Upper <- p_U
+
+
+  res_df$fire_ignition_day <-  apply(res_df, 1, function(x){
+    
+    prob_ignition = runif(1, min=x["P_daily_ignition_Lower"], max=x["P_daily_ignition_Upper"])
+    sample(c(FALSE,TRUE), 
+           size = 1, 
+           replace = TRUE, 
+           prob = c(1-prob_ignition, prob_ignition))
+    
+  }) 
   
   
   # MODEL NUMBER OF FIRES
-  message("Modelling number of fires in day")
+  message("Simulate number of fires in day")
   
   res_df$num_fires = 0
-  res_df[which(res_df$fire_ignition_day),]$num_fires <- pois_num_fires_per_day_model(pois_lambda, sum(res_df$fire_ignition_day))
+  num_ignition_days <- sum(res_df$fire_ignition_day)
+  res_df[which(res_df$fire_ignition_day),]$num_fires <- apply(matrix(rep(1,num_ignition_days)), 1, function(x) get_emp_df_val(n_fires_ecdf, 1))
   
+  
+
+
   # GET DF BY EVENT (RATHER THAN DAY)
   message("Reformat data")
   
@@ -93,7 +140,8 @@ build_event_set <- function(n_sim_years,
   
   # SIMULATE FIRE SIZES
   message("Simulate Fire Sizes")
-  sim_FIRE_SIZEs <- get_lognormal_fire_size_r_vars_wrapper(res_by_fire_w_landfire_df, 1)
+  # sim_FIRE_SIZEs <- get_lognormal_fire_size_r_vars_wrapper(res_by_fire_w_landfire_df, 1)
+  sim_FIRE_SIZEs <- get_LN_PL_fire_size_r_vars_wrapper(res_by_fire_w_landfire_df, 1)
   
   res_by_fire_w_landfire_df$FIRE_SIZE <- sim_FIRE_SIZEs$FIRE_SIZE
   

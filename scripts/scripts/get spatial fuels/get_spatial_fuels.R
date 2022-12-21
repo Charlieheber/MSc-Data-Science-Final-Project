@@ -22,7 +22,7 @@ this_lat_extent <- c(34, 38)
 #########################################
 
 CONUS_fuel_models <- raster(paste0(input_file_loc, "/LANDFIRE/LF2022_FBFM13_220_CONUS/Tif/LC22_F13_220.tif"))
-CONUS_fuel_models
+
 
 this_ref_lon <- 96
 this_ref_lat <- 23

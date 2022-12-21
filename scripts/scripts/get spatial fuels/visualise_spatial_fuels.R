@@ -31,6 +31,10 @@ this_LANDFIRE_shp <- sp::merge(this_LANDFIRE_shp, landtype_key[, c("Value", "FBF
 #### VISUALISE FUELS ######################################
 ###########################################################
 
+this_study_area_radius <- 100 # km
+this_centroid_study_area <- c(-120.06, 36.03) # lon/lat
+
+
 colours <- c("grass" = "forestgreen", 
              "shrub" = "darksalmon",
              "timber_litter" = "burlywood4",
@@ -49,13 +53,26 @@ fuel_pal <- colorFactor(
 
 
 leaflet(this_LANDFIRE_shp) %>%
-  addProviderTiles("Esri.WorldImagery") %>%
-  addProviderTiles("Stamen.TonerLabels") %>%
+  addTiles(group="map") %>%
+  addProviderTiles("Esri.WorldImagery", group="satellite") %>%
+  addProviderTiles("Stamen.TonerLabels", group="satellite") %>%
   addPolygons(fillOpacity=0.8, opacity=0,
               fillColor=~fuel_pal(typical_fuel_complex), color="black",
-              label=~typical_fuel_complex) %>%
+              label=~typical_fuel_complex, group = "land type") %>%
   addLegend(
     pal = fuel_pal, title = "Fueltypes in study area", values = names(colours),
     opacity = 1
+  ) %>%
+  addCircles(lng=this_centroid_study_area[1], lat=this_centroid_study_area[2],
+             radius=this_study_area_radius*1000, color="blue", opacity = 1, fillOpacity=0,
+             group = "study area") %>%
+  addLegend(
+    colors = "blue", title = "Study Area", labels = "study area",
+    opacity = 1, position="bottomleft"
+  ) %>%
+  addLayersControl(
+    baseGroups = c("map", "satellite"), overlayGroups = c("study area", "land type")
   )
+  
+
 
